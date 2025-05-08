@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox alignment="CENTER" prefHeight="600.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.HelloController">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+
+    <Label text="Aplikacja Pogodowa" style="-fx-font-size: 24px; -fx-font-weight: bold;" />
+
+    <!-- Wybór metody wprowadzania lokalizacji -->
+    <HBox alignment="CENTER" spacing="20.0">
+        <Label text="Metoda wprowadzania lokalizacji:" />
+        <RadioButton fx:id="cityRadioButton" text="Nazwa miasta" selected="true" onAction="#onLocationMethodChanged">
+            <toggleGroup>
+                <ToggleGroup fx:id="locationMethod" />
+            </toggleGroup>
+        </RadioButton>
+        <RadioButton fx:id="coordsRadioButton" text="Współrzędne geograficzne" toggleGroup="$locationMethod" onAction="#onLocationMethodChanged" />
+    </HBox>
+
+    <!-- Panel dla nazwy miasta -->
+    <HBox fx:id="cityInputPanel" alignment="CENTER" spacing="10.0">
+        <Label text="Podaj nazwę miasta:" />
+        <TextField fx:id="cityInput" promptText="np. Warszawa" prefWidth="200.0" onAction="#onSearchButtonClick" />
+    </HBox>
+
+    <!-- Panel dla współrzędnych -->
+    <HBox fx:id="coordsInputPanel" alignment="CENTER" spacing="10.0" visible="false">
+        <Label text="Szerokość:" />
+        <TextField fx:id="latitudeInput" promptText="np. 52.23" prefWidth="100.0" />
+        <Label text="Długość:" />
+        <TextField fx:id="longitudeInput" promptText="np. 21.01" prefWidth="100.0" onAction="#onSearchButtonClick" />
+    </HBox>
+
+    <!-- Przycisk wyszukiwania -->
+    <Button fx:id="searchButton" onAction="#onSearchButtonClick" text="Pobierz prognozę" prefWidth="150.0" />
+
+    <!-- Wyniki pogody -->
+    <TitledPane text="Aktualna Pogoda" expanded="true" collapsible="false" prefHeight="350.0" prefWidth="600.0">
+        <VBox spacing="10.0" style="-fx-background-color: #f0f8ff; -fx-padding: 10;">
+            <HBox spacing="10.0">
+                <VBox spacing="5.0" prefWidth="250.0">
+                    <Label text="Lokalizacja:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="locationLabel" text="---" />
+
+                    <Label text="Temperatura (2m):" style="-fx-font-weight: bold;" />
+                    <Label fx:id="temperatureLabel" text="---" />
+
+                    <Label text="Temperatura gleby (0cm):" style="-fx-font-weight: bold;" />
+                    <Label fx:id="soilTemperatureLabel" text="---" />
+
+                    <Label text="Prędkość wiatru:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="windSpeedLabel" text="---" />
+                </VBox>
+
+                <VBox spacing="5.0" prefWidth="250.0">
+                    <Label text="Wilgotność:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="humidityLabel" text="---" />
+
+                    <Label text="Ciśnienie:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="pressureLabel" text="---" />
+
+                    <Label text="Opady:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="rainLabel" text="---" />
+
+                    <Label text="Data aktualizacji:" style="-fx-font-weight: bold;" />
+                    <Label fx:id="updateTimeLabel" text="---" />
+                </VBox>
+            </HBox>
+
+            <Label text="Prognoza:" style="-fx-font-weight: bold;" />
+            <GridPane fx:id="forecastGrid" hgap="15" vgap="10" alignment="CENTER">
+                <!-- Forecast items will be added dynamically -->
+            </GridPane>
+        </VBox>
+    </TitledPane>
+
+    <!-- Status -->
+    <Label fx:id="statusLabel" style="-fx-text-fill: red;" />
+
+    <!-- Link do surowego JSON -->
+    <Hyperlink fx:id="showRawDataLink" text="Pokaż surowe dane" onAction="#onShowRawDataClick" />
+</VBox>
