@@ -15,6 +15,15 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.control.CheckBox;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import java.util.ArrayList;
+import java.util.List;
+
+
 public class HelloController {
     // UI elements for location input
     @FXML
@@ -78,19 +87,134 @@ public class HelloController {
     @FXML
     private Hyperlink showRawDataLink;
 
+    @FXML
+    private ToggleGroup dataMode;
+
+    @FXML
+    private RadioButton forecastRadioButton;
+
+    @FXML
+    private RadioButton historicalRadioButton;
+
+    @FXML
+    private HBox forecastInputPanel;
+
+    @FXML
+    private HBox historicalInputPanel;
+
+    @FXML
+    private DatePicker startDatePicker;
+
+    @FXML
+    private DatePicker endDatePicker;
+
+    @FXML
+    private VBox chartOptionsPanel;
+
+    @FXML
+    private CheckBox windSpeedCheckBox;
+
+    @FXML
+    private CheckBox soilTempCheckBox;
+
+    @FXML
+    private CheckBox airTempCheckBox;
+
+    @FXML
+    private CheckBox rainCheckBox;
+
+    @FXML
+    private CheckBox pressureCheckBox;
+
+    @FXML
+    private Button visualizeButton;
+
+
     // Variables to store raw data for the dialog
     private String rawGeoResponse;
     private String rawWeatherResponse;
+
+    private List<Double> windSpeedData = new ArrayList<>();
+    private List<Double> soilTempData = new ArrayList<>();
+    private List<Double> airTempData = new ArrayList<>();
+    private List<Double> rainData = new ArrayList<>();
+    private List<Double> pressureData = new ArrayList<>();
+    private List<String> timeLabels = new ArrayList<>();
 
     @FXML
     public void initialize() {
         // Make sure the correct input panel is visible initially
         updateInputPanelVisibility();
+        updateDataModeVisibility();
     }
 
     @FXML
     protected void onLocationMethodChanged() {
         updateInputPanelVisibility();
+    }
+    @FXML
+    protected void onDataModeChanged() {
+        updateDataModeVisibility();
+    }
+
+    @FXML
+    protected void onVisualizeButtonClick() {
+        boolean anySelected = windSpeedCheckBox.isSelected() ||
+                soilTempCheckBox.isSelected() ||
+                airTempCheckBox.isSelected() ||
+                rainCheckBox.isSelected() ||
+                pressureCheckBox.isSelected();
+
+        if (!anySelected) {
+            statusLabel.setText("Zaznacz przynajmniej jeden typ danych do wizualizacji.");
+            return;
+        }
+
+        // Sprawdź, czy mamy dane do wyświetlenia
+        if (timeLabels.isEmpty()) {
+            statusLabel.setText("Brak danych do wizualizacji. Pobierz najpierw dane pogodowe.");
+            return;
+        }
+
+        // Wizualizuj każdy zaznaczony rodzaj danych w osobnym oknie
+        if (windSpeedCheckBox.isSelected()) {
+            openChartWindow("Prędkość wiatru", "km/h", windSpeedData, timeLabels);
+        }
+
+        if (soilTempCheckBox.isSelected()) {
+            openChartWindow("Temperatura gleby", "°C", soilTempData, timeLabels);
+        }
+
+        if (airTempCheckBox.isSelected()) {
+            openChartWindow("Temperatura powietrza", "°C", airTempData, timeLabels);
+        }
+
+        if (rainCheckBox.isSelected()) {
+            openChartWindow("Opady", "mm", rainData, timeLabels);
+        }
+
+        if (pressureCheckBox.isSelected()) {
+            openChartWindow("Ciśnienie", "hPa", pressureData, timeLabels);
+        }
+    }
+
+    private void openChartWindow(String title, String yAxisLabel, List<Double> data, List<String> labels) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("chart-view.fxml"));
+            Scene scene = new Scene(loader.load(), 800, 600);
+
+            ChartController chartController = loader.getController();
+            chartController.setupChart(title, yAxisLabel, data, labels);
+            chartController.setWindowTitle(title);
+
+            Stage stage = new Stage();
+            stage.setTitle(title);
+            stage.setScene(scene);
+            stage.show();
+        } catch (Exception e) {
+            statusLabel.setText("Błąd podczas tworzenia wykresu: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void updateInputPanelVisibility() {
@@ -101,10 +225,20 @@ public class HelloController {
         coordsInputPanel.setManaged(!isCityMode);
     }
 
+    private void updateDataModeVisibility() {
+        boolean isForecastMode = forecastRadioButton.isSelected();
+        forecastInputPanel.setVisible(isForecastMode);
+        forecastInputPanel.setManaged(isForecastMode);
+        historicalInputPanel.setVisible(!isForecastMode);
+        historicalInputPanel.setManaged(!isForecastMode);
+    }
+
     @FXML
     protected void onSearchButtonClick() {
         // Clear previous data
         clearWeatherDisplay();
+
+        boolean isForecastMode = forecastRadioButton.isSelected();
 
         // Check if we need to get location by city name or coordinates
         if (cityRadioButton.isSelected()) {
@@ -113,7 +247,11 @@ public class HelloController {
                 statusLabel.setText("Wprowadź nazwę miasta.");
                 return;
             }
-            getWeatherByCity(city);
+            if (isForecastMode) {
+                getWeatherByCity(city);
+            } else {
+                getHistoricalWeatherByCity(city);
+            }
         } else {
             // Get weather by coordinates
             String latText = latitudeInput.getText().trim();
@@ -138,7 +276,11 @@ public class HelloController {
                     return;
                 }
 
-                getWeatherByCoordinates(latitude, longitude);
+                if (isForecastMode) {
+                    getWeatherByCoordinates(latitude, longitude);
+                } else {
+                    getHistoricalWeatherByCoordinates(latitude, longitude);
+                }
             } catch (NumberFormatException e) {
                 statusLabel.setText("Wprowadź poprawne wartości liczbowe dla współrzędnych.");
             }
@@ -184,6 +326,182 @@ public class HelloController {
                 });
             }
         });
+    }
+
+    private void getHistoricalWeatherByCity(String city) {
+        // Clear status and disable search button
+        statusLabel.setText("");
+        searchButton.setDisable(true);
+        statusLabel.setText("Pobieranie historycznych danych pogodowych...");
+
+        // Use CompletableFuture to handle the API call asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                // First, get coordinates for the city
+                String geoApiUrl = "https://geocoding-api.open-meteo.com/v1/search?name="
+                        + URLEncoder.encode(city, StandardCharsets.UTF_8.toString())
+                        + "&count=1&language=pl&format=json";
+
+                rawGeoResponse = makeHttpRequest(geoApiUrl);
+
+                // Check if we got results
+                if (!rawGeoResponse.contains("\"results\"") || rawGeoResponse.contains("\"results\":[]")) {
+                    javafx.application.Platform.runLater(() -> {
+                        statusLabel.setText("Nie znaleziono miasta o nazwie: " + city);
+                        searchButton.setDisable(false);
+                    });
+                    return;
+                }
+
+                // Extract coordinates from geo response
+                double latitude = extractDoubleFromJson(rawGeoResponse, "latitude");
+                double longitude = extractDoubleFromJson(rawGeoResponse, "longitude");
+                String name = extractStringFromJson(rawGeoResponse, "name");
+
+                // Get historical weather data using the coordinates
+                getHistoricalWeatherByCoordinates(latitude, longitude, name);
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    statusLabel.setText("Błąd: " + e.getMessage());
+                    searchButton.setDisable(false);
+                });
+            }
+        });
+    }
+
+    // New method for historical weather by coordinates:
+    private void getHistoricalWeatherByCoordinates(double latitude, double longitude) {
+        getHistoricalWeatherByCoordinates(latitude, longitude, "Współrzędne: " + latitude + ", " + longitude);
+    }
+
+    private void getHistoricalWeatherByCoordinates(double latitude, double longitude, String locationName) {
+        // Clear status and disable search button if not already done
+        if (!searchButton.isDisabled()) {
+            statusLabel.setText("");
+            searchButton.setDisable(true);
+            statusLabel.setText("Pobieranie historycznych danych pogodowych...");
+        }
+
+        // Use CompletableFuture to handle the API call asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Validate date range
+                if (startDatePicker.getValue() == null || endDatePicker.getValue() == null) {
+                    javafx.application.Platform.runLater(() -> {
+                        statusLabel.setText("Wybierz daty początkową i końcową.");
+                        searchButton.setDisable(false);
+                    });
+                    return;
+                }
+
+                String startDate = startDatePicker.getValue().toString();
+                String endDate = endDatePicker.getValue().toString();
+
+                // Historical weather API URL
+                String historicalWeatherApiUrl = "https://archive-api.open-meteo.com/v1/archive?latitude=" + latitude +
+                        "&longitude=" + longitude +
+                        "&start_date=" + startDate +
+                        "&end_date=" + endDate +
+                        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code" +
+                        "&timezone=auto";
+
+                rawWeatherResponse = makeHttpRequest(historicalWeatherApiUrl);
+
+                // Update UI with weather data
+                javafx.application.Platform.runLater(() -> {
+                    try {
+                        displayHistoricalWeatherData(rawWeatherResponse, locationName);
+                        statusLabel.setText("Historyczne dane pogodowe zostały pobrane.");
+                    } catch (Exception e) {
+                        statusLabel.setText("Błąd podczas przetwarzania danych: " + e.getMessage());
+                    } finally {
+                        searchButton.setDisable(false);
+                    }
+                });
+
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    statusLabel.setText("Błąd: " + e.getMessage());
+                    searchButton.setDisable(false);
+                });
+            }
+        });
+    }
+
+    private void displayHistoricalWeatherData(String weatherData, String locationName) {
+        // Set location name
+        locationLabel.setText(locationName + " (Dane historyczne)");
+
+        // Clear current weather display
+        temperatureLabel.setText("N/D - tryb historyczny");
+        windSpeedLabel.setText("N/D - tryb historyczny");
+        humidityLabel.setText("N/D - tryb historyczny");
+        pressureLabel.setText("N/D - tryb historyczny");
+        soilTemperatureLabel.setText("N/D - tryb historyczny");
+        rainLabel.setText("N/D - tryb historyczny");
+        updateTimeLabel.setText(startDatePicker.getValue().toString() + " do " + endDatePicker.getValue().toString());
+
+        // Extract historical forecast data
+        String dailyJson = extractStringFromJson(weatherData, "daily");
+        if (dailyJson != null && !dailyJson.isEmpty()) {
+            String datesJson = extractStringFromJson(dailyJson, "time");
+            String maxTempJson = extractStringFromJson(dailyJson, "temperature_2m_max");
+            String minTempJson = extractStringFromJson(dailyJson, "temperature_2m_min");
+            String precipSumJson = extractStringFromJson(dailyJson, "precipitation_sum");
+
+            // Parse arrays
+            String[] dates = parseJsonArray(datesJson);
+            String[] maxTemps = parseJsonArray(maxTempJson);
+            String[] minTemps = parseJsonArray(minTempJson);
+            String[] precipSums = parseJsonArray(precipSumJson);
+
+            // Zapisz dane historyczne do list
+            for (int i = 0; i < dates.length; i++) {
+                double avgTemp = 0;
+                double precipVal = 0;
+
+                try {
+                    avgTemp = (Double.parseDouble(maxTemps[i]) + Double.parseDouble(minTemps[i])) / 2;
+                } catch (NumberFormatException e) {
+                    // Ignoruj błędy parsowania
+                }
+
+                try {
+                    precipVal = Double.parseDouble(precipSums[i]);
+                } catch (NumberFormatException e) {
+                    // Ignoruj błędy parsowania
+                }
+
+                // Dodaj dane do list
+                airTempData.add(avgTemp);
+                rainData.add(precipVal);
+                // Dla pozostałych wartości wstawiamy 0 - w rzeczywistej aplikacji
+                // należałoby dodać logikę do pobierania tych danych z API
+                soilTempData.add(0.0);
+                windSpeedData.add(0.0);
+                pressureData.add(0.0);
+
+                timeLabels.add(formatDate(dates[i]));
+            }
+
+            // Clear grid and add forecast data
+            forecastGrid.getChildren().clear();
+
+            // Add headers
+            forecastGrid.add(new Label("Data"), 0, 0);
+            forecastGrid.add(new Label("Min. Temp."), 1, 0);
+            forecastGrid.add(new Label("Max. Temp."), 2, 0);
+            forecastGrid.add(new Label("Opady"), 3, 0);
+
+            // Display historical data
+            int days = Math.min(dates.length, 30); // Show up to 10 days
+            for (int i = 0; i < days; i++) {
+                forecastGrid.add(new Label(formatDate(dates[i])), 0, i + 1);
+                forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);
+                forecastGrid.add(new Label(maxTemps[i] + " °C"), 2, i + 1);
+                forecastGrid.add(new Label(precipSums[i] + " mm"), 3, i + 1);
+            }
+        }
     }
 
     private void getWeatherByCoordinates(double latitude, double longitude) {
@@ -246,6 +564,13 @@ public class HelloController {
         double precipitation = extractDoubleFromJson(currentJson, "precipitation");
         String time = extractStringFromJson(currentJson, "time");
 
+        windSpeedData.add(windSpeed);
+        soilTempData.add(soilTemperature);
+        airTempData.add(temperature);
+        rainData.add(precipitation);
+        pressureData.add(pressure);
+        timeLabels.add("Aktualne");
+
         // Display current weather
         temperatureLabel.setText(String.format("%.1f °C", temperature));
         windSpeedLabel.setText(String.format("%.1f km/h", windSpeed));
@@ -254,6 +579,7 @@ public class HelloController {
         soilTemperatureLabel.setText(String.format("%.1f °C", soilTemperature));
         rainLabel.setText(String.format("%.2f mm", precipitation));
         updateTimeLabel.setText(time);
+
 
         // Extract forecast data - daily min and max temperatures
         String dailyJson = extractStringFromJson(weatherData, "daily");
@@ -269,6 +595,32 @@ public class HelloController {
             String[] minTemps = parseJsonArray(minTempJson);
             String[] precipSums = parseJsonArray(precipSumJson);
 
+            // Zapisz dane prognozy do list dla wykresów
+            for (int i = 0; i < dates.length; i++) {
+                // Dla prognozy możemy użyć średniej temp max i min
+                double avgTemp = 0;
+                try {
+                    avgTemp = (Double.parseDouble(maxTemps[i]) + Double.parseDouble(minTemps[i])) / 2;
+                } catch (NumberFormatException e) {
+                    avgTemp = 0;
+                }
+
+                airTempData.add(avgTemp);
+
+                // Dla pozostałych wartości wstawiamy 0 lub wartości z API jeśli są dostępne
+                // W rzeczywistej aplikacji należałoby dodać logikę do pobierania tych danych z API
+                soilTempData.add(0.0); // Brak danych o temperaturze gleby w prognozie
+                windSpeedData.add(0.0); // Brak danych o wietrze w prognozie
+                try {
+                    rainData.add(Double.parseDouble(precipSums[i]));
+                } catch (NumberFormatException e) {
+                    rainData.add(0.0);
+                }
+                pressureData.add(0.0); // Brak danych o ciśnieniu w prognozie
+
+                timeLabels.add(formatDate(dates[i]));
+            }
+
             // Clear grid and add forecast data
             forecastGrid.getChildren().clear();
 
@@ -278,8 +630,8 @@ public class HelloController {
             forecastGrid.add(new Label("Max. Temp."), 2, 0);
             forecastGrid.add(new Label("Opady"), 3, 0);
 
-            // Display up to 5 days forecast
-            int days = Math.min(dates.length, 5);
+            // Display forecast data
+            int days = Math.min(dates.length, 7); // Show up to 7 days
             for (int i = 0; i < days; i++) {
                 forecastGrid.add(new Label(formatDate(dates[i])), 0, i + 1);
                 forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);
@@ -329,6 +681,14 @@ public class HelloController {
         updateTimeLabel.setText("---");
         forecastGrid.getChildren().clear();
         statusLabel.setText("");
+
+
+        windSpeedData.clear();
+        soilTempData.clear();
+        airTempData.clear();
+        rainData.clear();
+        pressureData.clear();
+        timeLabels.clear();
     }
 
     @FXML

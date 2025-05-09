@@ -4,12 +4,23 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox alignment="CENTER" prefHeight="600.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.HelloController">
+<VBox alignment="CENTER" prefHeight="700.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.HelloController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
 
     <Label text="Aplikacja Pogodowa" style="-fx-font-size: 24px; -fx-font-weight: bold;" />
+
+    <!-- Wybór trybu danych -->
+    <HBox alignment="CENTER" spacing="20.0">
+        <Label text="Tryb danych:" />
+        <RadioButton fx:id="forecastRadioButton" text="Prognoza pogody" selected="true" onAction="#onDataModeChanged">
+            <toggleGroup>
+                <ToggleGroup fx:id="dataMode" />
+            </toggleGroup>
+        </RadioButton>
+        <RadioButton fx:id="historicalRadioButton" text="Dane historyczne" toggleGroup="$dataMode" onAction="#onDataModeChanged" />
+    </HBox>
 
     <!-- Wybór metody wprowadzania lokalizacji -->
     <HBox alignment="CENTER" spacing="20.0">
@@ -36,11 +47,24 @@
         <TextField fx:id="longitudeInput" promptText="np. 21.01" prefWidth="100.0" onAction="#onSearchButtonClick" />
     </HBox>
 
+    <!-- Panel dla trybu prognozy (domyślnie widoczny) -->
+    <HBox fx:id="forecastInputPanel" alignment="CENTER" spacing="10.0">
+        <Label text="Prognoza pogody na przyszłe dni" />
+    </HBox>
+
+    <!-- Panel dla trybu historycznego (domyślnie ukryty) -->
+    <HBox fx:id="historicalInputPanel" alignment="CENTER" spacing="10.0" visible="false">
+        <Label text="Data początkowa:" />
+        <DatePicker fx:id="startDatePicker" />
+        <Label text="Data końcowa:" />
+        <DatePicker fx:id="endDatePicker" />
+    </HBox>
+
     <!-- Przycisk wyszukiwania -->
-    <Button fx:id="searchButton" onAction="#onSearchButtonClick" text="Pobierz prognozę" prefWidth="150.0" />
+    <Button fx:id="searchButton" onAction="#onSearchButtonClick" text="Pobierz dane" prefWidth="150.0" />
 
     <!-- Wyniki pogody -->
-    <TitledPane text="Aktualna Pogoda" expanded="true" collapsible="false" prefHeight="350.0" prefWidth="600.0">
+    <TitledPane text="Dane Pogodowe" expanded="true" collapsible="false" prefHeight="350.0" prefWidth="600.0">
         <VBox spacing="10.0" style="-fx-background-color: #f0f8ff; -fx-padding: 10;">
             <HBox spacing="10.0">
                 <VBox spacing="5.0" prefWidth="250.0">
@@ -72,10 +96,25 @@
                 </VBox>
             </HBox>
 
-            <Label text="Prognoza:" style="-fx-font-weight: bold;" />
+            <Label text="Dane dzienne:" style="-fx-font-weight: bold;" />
             <GridPane fx:id="forecastGrid" hgap="15" vgap="10" alignment="CENTER">
                 <!-- Forecast items will be added dynamically -->
             </GridPane>
+        </VBox>
+    </TitledPane>
+
+    <TitledPane text="Wizualizacja danych" expanded="true" collapsible="true">
+        <VBox fx:id="chartOptionsPanel" spacing="10.0" style="-fx-background-color: #e6f2ff; -fx-padding: 10;">
+            <Label text="Wybierz dane do wizualizacji:" style="-fx-font-weight: bold;" />
+            <HBox spacing="15.0" alignment="CENTER_LEFT">
+                <CheckBox fx:id="windSpeedCheckBox" text="Prędkość wiatru" />
+                <CheckBox fx:id="soilTempCheckBox" text="Temperatura gleby" />
+                <CheckBox fx:id="airTempCheckBox" text="Temperatura powietrza" />
+                <CheckBox fx:id="rainCheckBox" text="Opady" />
+                <CheckBox fx:id="pressureCheckBox" text="Ciśnienie" />
+            </HBox>
+            <Button fx:id="visualizeButton" text="Wizualizuj wybrane dane" onAction="#onVisualizeButtonClick" />
+            <Label text="Każdy wykres zostanie otwarty w nowym oknie" style="-fx-font-style: italic;" />
         </VBox>
     </TitledPane>
 
