@@ -10,24 +10,59 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WeatherService {
+    private static final Logger LOGGER = Logger.getLogger(WeatherService.class.getName());
     private String rawWeatherResponse;
+    private final RedisCacheService cacheService = RedisCacheService.getInstance();
 
     public String getRawWeatherResponse() {
         return rawWeatherResponse;
     }
 
     public WeatherData getCurrentWeather(LocationData location) throws IOException {
-        // Enhanced API URL to include all necessary parameters for both current and forecast data
-        String weatherApiUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + location.getLatitude() +
-                "&longitude=" + location.getLongitude() +
-                "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
-                "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
-                "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean" +
-                "&timezone=auto&forecast_days=7";
+        String cacheKey = cacheService.generateForecastCacheKey(location.getLatitude(), location.getLongitude());
+        boolean usedCache = false;
 
-        rawWeatherResponse = HttpUtil.makeHttpRequest(weatherApiUrl);
+        // Najpierw sprawdź cache
+        if (cacheService.hasCache(cacheKey)) {
+            LOGGER.info("Znaleziono dane prognozy w cache dla: " + location.getName());
+            rawWeatherResponse = cacheService.getFromCache(cacheKey);
+            usedCache = true;
+        } else {
+            // Jeśli brak danych w cache, pobierz z API
+            try {
+                LOGGER.info("Próba pobierania danych prognozy z API dla: " + location.getName());
+                String weatherApiUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + location.getLatitude() +
+                        "&longitude=" + location.getLongitude() +
+                        "¤t=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
+                        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
+                        "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean" +
+                        "&timezone=auto&forecast_days=7";
+
+                rawWeatherResponse = HttpUtil.makeHttpRequest(weatherApiUrl);
+                cacheService.saveToCache(cacheKey, rawWeatherResponse, true);
+            } catch (UnknownHostException e) {
+                LOGGER.warning("Brak połączenia z internetem, sprawdzanie cache...");
+                usedCache = true;
+            } catch (IOException e) {
+                LOGGER.warning("Błąd pobierania z API: " + e.getMessage() + ", sprawdzanie cache...");
+                usedCache = true;
+            }
+        }
+
+        // Jeśli użyto cache lub wystąpił błąd, spróbuj pobrać z cache
+        if (usedCache && rawWeatherResponse == null) {
+            if (cacheService.hasCache(cacheKey)) {
+                LOGGER.info("Znaleziono dane prognozy w cache dla: " + location.getName());
+                rawWeatherResponse = cacheService.getFromCache(cacheKey);
+            } else {
+                throw new IOException("Brak połączenia z internetem i brak danych w cache dla lokalizacji: " + location.getName());
+            }
+        }
 
         // Tworzenie i wypełnianie obiektu WeatherData
         WeatherData weatherData = new WeatherData();
@@ -41,7 +76,7 @@ public class WeatherService {
         weatherData.setPressure(JsonParser.extractDoubleFromJson(currentJson, "surface_pressure"));
         weatherData.setSoilTemperature(JsonParser.extractDoubleFromJson(currentJson, "soil_temperature_0cm"));
         weatherData.setPrecipitation(JsonParser.extractDoubleFromJson(currentJson, "precipitation"));
-        weatherData.setTime(JsonParser.extractStringFromJson(currentJson, "time"));
+        weatherData.setTime(JsonParser.extractStringFromJson(currentJson, "time") + (usedCache ? " (z cache)" : ""));
 
         // Dodanie danych dla bieżącej pogody do list do wykresów
         weatherData.addChartDataPoint(

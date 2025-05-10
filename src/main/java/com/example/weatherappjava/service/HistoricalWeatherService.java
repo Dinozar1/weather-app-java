@@ -10,42 +10,73 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.time.LocalDate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class HistoricalWeatherService {
+    private static final Logger LOGGER = Logger.getLogger(HistoricalWeatherService.class.getName());
     private String rawWeatherResponse;
+    private final RedisCacheService cacheService = RedisCacheService.getInstance();
 
     public String getRawWeatherResponse() {
         return rawWeatherResponse;
     }
 
     public WeatherData getHistoricalWeather(LocationData location, LocalDate startDate, LocalDate endDate) throws IOException {
-        // Validate date range
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Wybierz daty początkową i końcową.");
         }
 
         String startDateStr = startDate.toString();
         String endDateStr = endDate.toString();
+        String cacheKey = cacheService.generateHistoricalCacheKey(location.getLatitude(), location.getLongitude(), startDate, endDate);
+        boolean usedCache = false;
 
-        // Historical weather API URL with additional parameters:
-        // - relative_humidity_2m_mean - for humidity
-        // - surface_pressure_mean - for pressure
-        // - windspeed_10m_mean - for wind speed
-        // - soil_temperature_0_to_7cm_mean - for soil temperature
-        String historicalWeatherApiUrl = "https://archive-api.open-meteo.com/v1/archive?latitude=" + location.getLatitude() +
-                "&longitude=" + location.getLongitude() +
-                "&start_date=" + startDateStr +
-                "&end_date=" + endDateStr +
-                "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
-                "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean,soil_temperature_0_to_7cm_mean" +
-                "&timezone=auto";
+        // Najpierw sprawdź cache
+        if (cacheService.hasCache(cacheKey)) {
+            LOGGER.info("Znaleziono dane historyczne w cache dla: " + location.getName());
+            rawWeatherResponse = cacheService.getFromCache(cacheKey);
+            usedCache = true;
+        } else {
+            // Jeśli brak danych w cache, pobierz z API
+            try {
+                LOGGER.info("Próba pobierania danych historycznych z API dla: " + location.getName() +
+                        " od " + startDateStr + " do " + endDateStr);
+                String historicalWeatherApiUrl = "https://archive-api.open-meteo.com/v1/archive?latitude=" + location.getLatitude() +
+                        "&longitude=" + location.getLongitude() +
+                        "&start_date=" + startDateStr +
+                        "&end_date=" + endDateStr +
+                        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
+                        "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean,soil_temperature_0_to_7cm_mean" +
+                        "&timezone=auto";
 
-        rawWeatherResponse = HttpUtil.makeHttpRequest(historicalWeatherApiUrl);
+                rawWeatherResponse = HttpUtil.makeHttpRequest(historicalWeatherApiUrl);
+                cacheService.saveToCache(cacheKey, rawWeatherResponse, false);
+            } catch (UnknownHostException e) {
+                LOGGER.warning("Brak połączenia z internetem, sprawdzanie cache...");
+                usedCache = true;
+            } catch (IOException e) {
+                LOGGER.warning("Błąd pobierania z API: " + e.getMessage() + ", sprawdzanie cache...");
+                usedCache = true;
+            }
+        }
+
+        // Jeśli użyto cache lub wystąpił błąd, spróbuj pobrać z cache
+        if (usedCache && rawWeatherResponse == null) {
+            if (cacheService.hasCache(cacheKey)) {
+                LOGGER.info("Znaleziono dane historyczne w cache dla: " + location.getName());
+                rawWeatherResponse = cacheService.getFromCache(cacheKey);
+            } else {
+                throw new IOException("Brak połączenia z internetem i brak danych w cache dla lokalizacji: " +
+                        location.getName() + " od " + startDateStr + " do " + endDateStr);
+            }
+        }
 
         // Tworzenie i wypełnianie obiektu WeatherData
         WeatherData weatherData = new WeatherData();
-        weatherData.setTime(startDateStr + " do " + endDateStr);
+        weatherData.setTime(startDateStr + " do " + endDateStr + (usedCache ? " (z cache)" : ""));
 
         // Extract historical data and fill weatherData object
         processHistoricalData(weatherData);

@@ -10,6 +10,8 @@ module com.example.weatherappjava {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
+    requires java.logging;
+    requires redis.clients.jedis;
 
     opens com.example.weatherappjava to javafx.fxml;
     exports com.example.weatherappjava;
