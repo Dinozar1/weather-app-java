@@ -68,7 +68,7 @@
         <ScrollPane fitToWidth="true" prefHeight="350.0">
             <HBox spacing="30.0" alignment="TOP_CENTER" style="-fx-background-color: #f0f8ff; -fx-padding: 10;">
 
-                <!-- Lewa sekcja: dane bieżące w dwóch kolumnach -->
+                <!-- Lewa sekcja: dane bieżące w dwóch kolumnach - widoczne tylko w trybie prognozy -->
                 <GridPane fx:id="weatherLabelsContainer" hgap="20.0" vgap="8.0" visible="true">
                     <!-- Kolumna 1 -->
                     <Label text="Lokalizacja:" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
@@ -77,7 +77,7 @@
                     <Label text="Temperatura (2m):" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                     <Label fx:id="temperatureLabel" text="---" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-                    <Label text="Temperatura gleby (0cm):" style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label fx:id="soilTempLabel" text="Temperatura gleby (0cm):" style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                     <Label fx:id="soilTemperatureLabel" text="---" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
                     <Label text="Prędkość wiatru:" style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
@@ -97,7 +97,7 @@
                     <Label fx:id="updateTimeLabel" text="---" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
                 </GridPane>
 
-                <!-- Prawa sekcja: dane dzienne -->
+                <!-- Prawa sekcja: dane dzienne - widoczne w obu trybach -->
                 <VBox spacing="10.0" alignment="TOP_LEFT">
                     <Label text="Dane dzienne:" style="-fx-font-weight: bold;" />
                     <GridPane fx:id="forecastGrid" hgap="15" vgap="10">
@@ -106,15 +106,14 @@
                 </VBox>
             </HBox>
         </ScrollPane>
-
     </TitledPane>
-
 
     <TitledPane text="Wizualizacja danych" expanded="true" collapsible="true">
         <VBox fx:id="chartOptionsPanel" spacing="10.0" style="-fx-background-color: #e6f2ff; -fx-padding: 10;">
             <Label text="Wybierz dane do wizualizacji:" style="-fx-font-weight: bold;" />
             <HBox spacing="15.0" alignment="CENTER_LEFT">
                 <CheckBox fx:id="windSpeedCheckBox" text="Prędkość wiatru" />
+                <!-- soilTempCheckBox będzie zarządzany dynamicznie - domyślnie widoczny tylko w trybie historycznym -->
                 <CheckBox fx:id="soilTempCheckBox" text="Temperatura gleby" />
                 <CheckBox fx:id="airTempCheckBox" text="Temperatura powietrza" />
                 <CheckBox fx:id="rainCheckBox" text="Opady" />

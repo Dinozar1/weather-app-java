@@ -42,6 +42,7 @@ public class MainController {
     @FXML private GridPane forecastGrid;
     @FXML private Label statusLabel;
     @FXML private Hyperlink showRawDataLink;
+    @FXML private GridPane weatherLabelsContainer;
 
     // Data mode elements
     @FXML private ToggleGroup dataMode;
@@ -71,6 +72,9 @@ public class MainController {
     // Shared weather data
     private WeatherData weatherData = new WeatherData();
 
+    // UI elements for soil temperature
+    @FXML private Label soilTempLabel;
+
     public MainController() {
         this.searchController = new WeatherSearchController(this);
         this.displayController = new WeatherDisplayController(this);
@@ -89,6 +93,41 @@ public class MainController {
         visualizationController.setAirTempCheckBox(airTempCheckBox);
         visualizationController.setRainCheckBox(rainCheckBox);
         visualizationController.setPressureCheckBox(pressureCheckBox);
+
+        // Add listener to update UI components when data mode changes
+        dataMode.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            updateDataModeComponents();
+        });
+
+        // Initialize UI components based on initial data mode
+        updateDataModeComponents();
+    }
+
+    /**
+     * Updates UI components based on current data mode (forecast or historical)
+     */
+    private void updateDataModeComponents() {
+        boolean isForecastMode = forecastRadioButton.isSelected();
+
+        // Weather display container (show only in forecast mode)
+        if (weatherLabelsContainer != null) {
+            weatherLabelsContainer.setVisible(isForecastMode);
+            weatherLabelsContainer.setManaged(isForecastMode);
+        }
+
+        // Soil temperature checkbox (show only in historical mode)
+        if (soilTempCheckBox != null) {
+            soilTempCheckBox.setVisible(!isForecastMode);
+            soilTempCheckBox.setManaged(!isForecastMode);
+        }
+
+        // Handle soil temperature label visibility within the current weather display
+        // It should remain visible in current weather data display
+        if (soilTemperatureLabel != null && soilTempLabel != null) {
+            // We want to keep the soil temperature label visible in the current weather panel
+            // but we don't need to change its visibility based on mode
+            // since the entire weather labels container already handles this
+        }
     }
 
     @FXML
@@ -99,6 +138,7 @@ public class MainController {
     @FXML
     protected void onDataModeChanged() {
         updateDataModeVisibility();
+        updateDataModeComponents();
     }
 
     @FXML
@@ -174,6 +214,9 @@ public class MainController {
     public Label getUpdateTimeLabel() { return updateTimeLabel; }
     public GridPane getForecastGrid() { return forecastGrid; }
     public GeolocationService getGeolocationService() { return geolocationService; }
+    public GridPane getWeatherLabelsContainer() { return weatherLabelsContainer; }
+    public CheckBox getSoilTempCheckBox() { return soilTempCheckBox; }
+    public boolean isForecastMode() { return forecastRadioButton.isSelected(); }
 
     // Getter i setter dla współdzielonych danych pogodowych
     public WeatherData getWeatherData() { return weatherData; }
