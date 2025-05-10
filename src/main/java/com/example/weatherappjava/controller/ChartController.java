@@ -1,4 +1,4 @@
-package com.example.weatherappjava;
+package com.example.weatherappjava.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;

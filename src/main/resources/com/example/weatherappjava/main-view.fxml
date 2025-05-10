@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox alignment="CENTER" prefHeight="700.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.HelloController">
+<VBox alignment="CENTER" prefHeight="700.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.controller.MainController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
@@ -65,43 +65,50 @@
 
     <!-- Wyniki pogody -->
     <TitledPane text="Dane Pogodowe" expanded="true" collapsible="false" prefHeight="350.0" prefWidth="600.0">
-        <VBox spacing="10.0" style="-fx-background-color: #f0f8ff; -fx-padding: 10;">
-            <HBox spacing="10.0">
-                <VBox spacing="5.0" prefWidth="250.0">
-                    <Label text="Lokalizacja:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="locationLabel" text="---" />
+        <ScrollPane fitToWidth="true" prefHeight="350.0">
+            <HBox spacing="30.0" alignment="TOP_CENTER" style="-fx-background-color: #f0f8ff; -fx-padding: 10;">
 
-                    <Label text="Temperatura (2m):" style="-fx-font-weight: bold;" />
-                    <Label fx:id="temperatureLabel" text="---" />
+                <!-- Lewa sekcja: dane bieżące w dwóch kolumnach -->
+                <GridPane fx:id="weatherLabelsContainer" hgap="20.0" vgap="8.0" visible="true">
+                    <!-- Kolumna 1 -->
+                    <Label text="Lokalizacja:" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label fx:id="locationLabel" text="---" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-                    <Label text="Temperatura gleby (0cm):" style="-fx-font-weight: bold;" />
-                    <Label fx:id="soilTemperatureLabel" text="---" />
+                    <Label text="Temperatura (2m):" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label fx:id="temperatureLabel" text="---" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-                    <Label text="Prędkość wiatru:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="windSpeedLabel" text="---" />
-                </VBox>
+                    <Label text="Temperatura gleby (0cm):" style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label fx:id="soilTemperatureLabel" text="---" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-                <VBox spacing="5.0" prefWidth="250.0">
-                    <Label text="Wilgotność:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="humidityLabel" text="---" />
+                    <Label text="Prędkość wiatru:" style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <Label fx:id="windSpeedLabel" text="---" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-                    <Label text="Ciśnienie:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="pressureLabel" text="---" />
+                    <!-- Kolumna 2 -->
+                    <Label text="Wilgotność:" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                    <Label fx:id="humidityLabel" text="---" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
 
-                    <Label text="Opady:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="rainLabel" text="---" />
+                    <Label text="Ciśnienie:" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <Label fx:id="pressureLabel" text="---" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
 
-                    <Label text="Data aktualizacji:" style="-fx-font-weight: bold;" />
-                    <Label fx:id="updateTimeLabel" text="---" />
+                    <Label text="Opady:" style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                    <Label fx:id="rainLabel" text="---" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+
+                    <Label text="Data aktualizacji:" style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                    <Label fx:id="updateTimeLabel" text="---" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+                </GridPane>
+
+                <!-- Prawa sekcja: dane dzienne -->
+                <VBox spacing="10.0" alignment="TOP_LEFT">
+                    <Label text="Dane dzienne:" style="-fx-font-weight: bold;" />
+                    <GridPane fx:id="forecastGrid" hgap="15" vgap="10">
+                        <!-- Forecast items will be added dynamically -->
+                    </GridPane>
                 </VBox>
             </HBox>
+        </ScrollPane>
 
-            <Label text="Dane dzienne:" style="-fx-font-weight: bold;" />
-            <GridPane fx:id="forecastGrid" hgap="15" vgap="10" alignment="CENTER">
-                <!-- Forecast items will be added dynamically -->
-            </GridPane>
-        </VBox>
     </TitledPane>
+
 
     <TitledPane text="Wizualizacja danych" expanded="true" collapsible="true">
         <VBox fx:id="chartOptionsPanel" spacing="10.0" style="-fx-background-color: #e6f2ff; -fx-padding: 10;">

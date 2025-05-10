@@ -1,0 +1,137 @@
+package com.example.weatherappjava.service;
+
+import com.example.weatherappjava.model.LocationData;
+import com.example.weatherappjava.model.WeatherData;
+import com.example.weatherappjava.util.DateFormatter;
+import com.example.weatherappjava.util.HttpUtil;
+import com.example.weatherappjava.util.JsonParser;
+
+import javafx.scene.control.Label;
+import javafx.scene.layout.GridPane;
+
+import java.io.IOException;
+
+public class WeatherService {
+    private String rawWeatherResponse;
+
+    public String getRawWeatherResponse() {
+        return rawWeatherResponse;
+    }
+
+    public WeatherData getCurrentWeather(LocationData location) throws IOException {
+        String weatherApiUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + location.getLatitude() +
+                "&longitude=" + location.getLongitude() +
+                "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
+                "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code" +
+                "&timezone=auto&forecast_days=7";
+
+        rawWeatherResponse = HttpUtil.makeHttpRequest(weatherApiUrl);
+
+        // Tworzenie i wypełnianie obiektu WeatherData
+        WeatherData weatherData = new WeatherData();
+
+        // Extract current weather data from JSON
+        String currentJson = JsonParser.extractStringFromJson(rawWeatherResponse, "current");
+
+        weatherData.setTemperature(JsonParser.extractDoubleFromJson(currentJson, "temperature_2m"));
+        weatherData.setWindSpeed(JsonParser.extractDoubleFromJson(currentJson, "wind_speed_10m"));
+        weatherData.setHumidity(JsonParser.extractDoubleFromJson(currentJson, "relative_humidity_2m"));
+        weatherData.setPressure(JsonParser.extractDoubleFromJson(currentJson, "surface_pressure"));
+        weatherData.setSoilTemperature(JsonParser.extractDoubleFromJson(currentJson, "soil_temperature_0cm"));
+        weatherData.setPrecipitation(JsonParser.extractDoubleFromJson(currentJson, "precipitation"));
+        weatherData.setTime(JsonParser.extractStringFromJson(currentJson, "time"));
+
+        // Dodanie danych dla bieżącej pogody do list do wykresów
+        weatherData.addChartDataPoint(
+                weatherData.getWindSpeed(),
+                weatherData.getSoilTemperature(),
+                weatherData.getTemperature(),
+                weatherData.getPrecipitation(),
+                weatherData.getPressure(),
+                "Aktualne"
+        );
+
+        // Extract forecast data - forecasts will be saved to chart data lists
+        processForecastData(weatherData);
+
+        return weatherData;
+    }
+
+    private void processForecastData(WeatherData weatherData) {
+        String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
+        if (dailyJson != null && !dailyJson.isEmpty()) {
+            String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
+            String maxTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_max");
+            String minTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_min");
+            String precipSumJson = JsonParser.extractStringFromJson(dailyJson, "precipitation_sum");
+
+            // Parse arrays
+            String[] dates = JsonParser.parseJsonArray(datesJson);
+            String[] maxTemps = JsonParser.parseJsonArray(maxTempJson);
+            String[] minTemps = JsonParser.parseJsonArray(minTempJson);
+            String[] precipSums = JsonParser.parseJsonArray(precipSumJson);
+
+            // Zapisz dane prognozy do list dla wykresów
+            for (int i = 0; i < dates.length; i++) {
+                // Dla prognozy możemy użyć średniej temp max i min
+                double avgTemp = 0;
+                try {
+                    avgTemp = (Double.parseDouble(maxTemps[i]) + Double.parseDouble(minTemps[i])) / 2;
+                } catch (NumberFormatException e) {
+                    avgTemp = 0;
+                }
+
+                double rainValue = 0;
+                try {
+                    rainValue = Double.parseDouble(precipSums[i]);
+                } catch (NumberFormatException e) {
+                    rainValue = 0.0;
+                }
+
+                // Dodaj dane do list wykresów
+                weatherData.addChartDataPoint(
+                        0.0, // Brak danych o wietrze w prognozie
+                        0.0, // Brak danych o temperaturze gleby w prognozie
+                        avgTemp,
+                        rainValue,
+                        0.0, // Brak danych o ciśnieniu w prognozie
+                        DateFormatter.formatDate(dates[i])
+                );
+            }
+        }
+    }
+
+    public void displayForecastInGrid(GridPane forecastGrid, WeatherData weatherData) {
+        String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
+        if (dailyJson != null && !dailyJson.isEmpty()) {
+            String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
+            String maxTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_max");
+            String minTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_min");
+            String precipSumJson = JsonParser.extractStringFromJson(dailyJson, "precipitation_sum");
+
+            // Parse arrays
+            String[] dates = JsonParser.parseJsonArray(datesJson);
+            String[] maxTemps = JsonParser.parseJsonArray(maxTempJson);
+            String[] minTemps = JsonParser.parseJsonArray(minTempJson);
+            String[] precipSums = JsonParser.parseJsonArray(precipSumJson);
+
+            // Clear grid and add forecast data
+            forecastGrid.getChildren().clear();
+
+            // Add headers
+            forecastGrid.add(new Label("Data"), 0, 0);
+            forecastGrid.add(new Label("Min. Temp."), 1, 0);
+            forecastGrid.add(new Label("Max. Temp."), 2, 0);
+            forecastGrid.add(new Label("Opady"), 3, 0);
+
+            // Display forecast data
+            int days = Math.min(dates.length, 7); // Show up to 7 days
+            for (int i = 0; i < days; i++) {
+                forecastGrid.add(new Label(DateFormatter.formatDate(dates[i])), 0, i + 1);
+                forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);
+                forecastGrid.add(new Label(maxTemps[i] + " °C"), 2, i + 1);
+                forecastGrid.add(new Label(precipSums[i] + " mm"), 3, i + 1);
+            }
+        }
+    }
+}

@@ -13,4 +13,6 @@ module com.example.weatherappjava {
 
     opens com.example.weatherappjava to javafx.fxml;
     exports com.example.weatherappjava;
+    exports com.example.weatherappjava.controller;
+    opens com.example.weatherappjava.controller to javafx.fxml;
 }
