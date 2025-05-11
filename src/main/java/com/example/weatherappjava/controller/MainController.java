@@ -1,28 +1,21 @@
 package com.example.weatherappjava.controller;
 
-import com.example.weatherappjava.model.LocationData;
 import com.example.weatherappjava.model.WeatherData;
 import com.example.weatherappjava.service.GeolocationService;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
-
-import java.io.IOException;
-import java.time.LocalDate;
 
 /**
- * Główny kontroler aplikacji pogodowej
+ * Main controller for the weather application, managing the UI and coordinating interactions
+ * between user inputs, weather data services, and visualization.
  */
+
 public class MainController {
     // UI elements for location input
-    @FXML private ToggleGroup locationMethod;
     @FXML private RadioButton cityRadioButton;
-    @FXML private RadioButton coordsRadioButton;
     @FXML private HBox cityInputPanel;
     @FXML private HBox coordsInputPanel;
     @FXML private TextField cityInput;
@@ -41,13 +34,11 @@ public class MainController {
     @FXML private Label updateTimeLabel;
     @FXML private GridPane forecastGrid;
     @FXML private Label statusLabel;
-    @FXML private Hyperlink showRawDataLink;
     @FXML private GridPane weatherLabelsContainer;
 
     // Data mode elements
     @FXML private ToggleGroup dataMode;
     @FXML private RadioButton forecastRadioButton;
-    @FXML private RadioButton historicalRadioButton;
     @FXML private HBox forecastInputPanel;
     @FXML private HBox historicalInputPanel;
     @FXML private DatePicker startDatePicker;
@@ -72,21 +63,25 @@ public class MainController {
     // Shared weather data
     private WeatherData weatherData = new WeatherData();
 
-    // UI elements for soil temperature
-    @FXML private Label soilTempLabel;
-
+    /**
+     * Constructor initializing delegated controllers.
+     */
     public MainController() {
         this.searchController = new WeatherSearchController(this);
         this.displayController = new WeatherDisplayController(this);
         this.visualizationController = new WeatherVisualizationController(this);
     }
 
+
+    /**
+     * Initializes UI components and sets up listeners for data mode changes.
+     */
     @FXML
     public void initialize() {
         updateInputPanelVisibility();
         updateDataModeVisibility();
 
-        // Initialize visualization controller with the UI elements
+        // Initialize the visualization controller with the UI elements
         visualizationController.setChartOptionsPanel(chartOptionsPanel);
         visualizationController.setWindSpeedCheckBox(windSpeedCheckBox);
         visualizationController.setSoilTempCheckBox(soilTempCheckBox);
@@ -94,7 +89,7 @@ public class MainController {
         visualizationController.setRainCheckBox(rainCheckBox);
         visualizationController.setPressureCheckBox(pressureCheckBox);
 
-        // Add listener to update UI components when data mode changes
+        // Add a listener to update UI components when data mode changes
         dataMode.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
             updateDataModeComponents();
         });
@@ -104,43 +99,36 @@ public class MainController {
     }
 
     /**
-     * Updates UI components based on current data mode (forecast or historical)
+     * Updates UI components based on the current data mode
      */
     private void updateDataModeComponents() {
         boolean isForecastMode = forecastRadioButton.isSelected();
-
-        // Weather display container (show only in forecast mode)
-        if (weatherLabelsContainer != null) {
-            weatherLabelsContainer.setVisible(isForecastMode);
-            weatherLabelsContainer.setManaged(isForecastMode);
-        }
-
-        // Soil temperature checkbox (show only in historical mode)
-        if (soilTempCheckBox != null) {
-            soilTempCheckBox.setVisible(!isForecastMode);
-            soilTempCheckBox.setManaged(!isForecastMode);
-        }
-
-        // Handle soil temperature label visibility within the current weather display
-        // It should remain visible in current weather data display
-        if (soilTemperatureLabel != null && soilTempLabel != null) {
-            // We want to keep the soil temperature label visible in the current weather panel
-            // but we don't need to change its visibility based on mode
-            // since the entire weather labels container already handles this
-        }
+        weatherLabelsContainer.setVisible(isForecastMode);
+        weatherLabelsContainer.setManaged(isForecastMode);
+        soilTempCheckBox.setVisible(!isForecastMode);
+        soilTempCheckBox.setManaged(!isForecastMode);
     }
 
+    /**
+     * Updates location input panel visibility based on the selected method (city or coordinates).
+     */
     @FXML
     protected void onLocationMethodChanged() {
         updateInputPanelVisibility();
     }
 
+    /**
+     * Updates data mode panel visibility and components when the mode changes.
+     */
     @FXML
     protected void onDataModeChanged() {
         updateDataModeVisibility();
         updateDataModeComponents();
     }
 
+    /**
+     * Handles search button click, clearing the display and delegating to the search controller.
+     */
     @FXML
     protected void onSearchButtonClick() {
         clearWeatherDisplay();
@@ -155,6 +143,9 @@ public class MainController {
         );
     }
 
+    /**
+     * Displays raw API responses via a display controller.
+     */
     @FXML
     protected void onShowRawDataClick() {
         displayController.showRawData(
@@ -164,7 +155,7 @@ public class MainController {
     }
 
     /**
-     * Handle visualize button click - delegates to visualization controller
+     * Triggers chart visualization via visualization controller.
      */
     @FXML
     protected void onVisualizeButtonClick() {
@@ -179,6 +170,9 @@ public class MainController {
         coordsInputPanel.setManaged(!isCityMode);
     }
 
+    /**
+     * Toggles visibility of city or coordinates input panels.
+     */
     private void updateDataModeVisibility() {
         boolean isForecastMode = forecastRadioButton.isSelected();
         forecastInputPanel.setVisible(isForecastMode);
@@ -187,6 +181,9 @@ public class MainController {
         historicalInputPanel.setManaged(!isForecastMode);
     }
 
+    /**
+     * Resets weather display elements to the default state.
+     */
     public void clearWeatherDisplay() {
         locationLabel.setText("---");
         temperatureLabel.setText("---");
@@ -201,7 +198,7 @@ public class MainController {
         weatherData.clearChartData();
     }
 
-    // Gettery do elementów UI dla delegowanych kontrolerów
+    // Getters for delegated controllers
     public Label getStatusLabel() { return statusLabel; }
     public Button getSearchButton() { return searchButton; }
     public Label getLocationLabel() { return locationLabel; }
@@ -214,11 +211,8 @@ public class MainController {
     public Label getUpdateTimeLabel() { return updateTimeLabel; }
     public GridPane getForecastGrid() { return forecastGrid; }
     public GeolocationService getGeolocationService() { return geolocationService; }
-    public GridPane getWeatherLabelsContainer() { return weatherLabelsContainer; }
-    public CheckBox getSoilTempCheckBox() { return soilTempCheckBox; }
-    public boolean isForecastMode() { return forecastRadioButton.isSelected(); }
 
-    // Getter i setter dla współdzielonych danych pogodowych
+    // Getter and setter for shared weather data
     public WeatherData getWeatherData() { return weatherData; }
     public void setWeatherData(WeatherData weatherData) { this.weatherData = weatherData; }
 }

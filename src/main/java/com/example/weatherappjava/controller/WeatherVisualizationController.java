@@ -11,28 +11,30 @@ import javafx.stage.Stage;
 import java.util.List;
 
 /**
- * Kontroler odpowiedzialny za wizualizację danych pogodowych
+ * Controller for visualizing weather data in charts.
  */
 public class WeatherVisualizationController {
     private final MainController mainController;
 
-    // Kontrolki z głównego formularza
-    @FXML private VBox chartOptionsPanel;
     @FXML private CheckBox windSpeedCheckBox;
     @FXML private CheckBox soilTempCheckBox;
     @FXML private CheckBox airTempCheckBox;
     @FXML private CheckBox rainCheckBox;
     @FXML private CheckBox pressureCheckBox;
 
+    /**
+     * Constructor linking to the main controller.
+     */
     public WeatherVisualizationController(MainController mainController) {
         this.mainController = mainController;
     }
 
     /**
-     * Obsługuje kliknięcie przycisku wizualizacji
+     * Handles visualization button click, opening chart windows for selected data types.
      */
     @FXML
     public void onVisualizeButtonClick() {
+        // Check if any data type is selected
         boolean anySelected = windSpeedCheckBox.isSelected() ||
                 soilTempCheckBox.isSelected() ||
                 airTempCheckBox.isSelected() ||
@@ -40,45 +42,42 @@ public class WeatherVisualizationController {
                 pressureCheckBox.isSelected();
 
         if (!anySelected) {
-            mainController.getStatusLabel().setText("Zaznacz przynajmniej jeden typ danych do wizualizacji.");
+            mainController.getStatusLabel().setText("Select at least one data type for visualization.");
             return;
         }
 
-        // Sprawdź, czy mamy dane do wyświetlenia
+        // Verify weather data availability
         if (!weatherDataHasData()) {
-            mainController.getStatusLabel().setText("Brak danych do wizualizacji. Pobierz najpierw dane pogodowe.");
+            mainController.getStatusLabel().setText("No data to visualize. Fetch weather data first.");
             return;
         }
 
         WeatherData weatherData = mainController.getWeatherData();
 
-        // Wizualizuj każdy zaznaczony rodzaj danych w osobnym oknie
+        // Open chart windows for selected data types
         if (windSpeedCheckBox.isSelected()) {
-            openChartWindow("Prędkość wiatru", "km/h", weatherData.getWindSpeedData(), weatherData.getTimeLabels());
+            openChartWindow("Wind Speed", "km/h", weatherData.getWindSpeedData(), weatherData.getTimeLabels());
         }
-
         if (soilTempCheckBox.isSelected()) {
-            openChartWindow("Temperatura gleby", "°C", weatherData.getSoilTempData(), weatherData.getTimeLabels());
+            openChartWindow("Soil Temperature", "°C", weatherData.getSoilTempData(), weatherData.getTimeLabels());
         }
-
         if (airTempCheckBox.isSelected()) {
-            openChartWindow("Temperatura powietrza", "°C", weatherData.getAirTempData(), weatherData.getTimeLabels());
+            openChartWindow("Air Temperature", "°C", weatherData.getAirTempData(), weatherData.getTimeLabels());
         }
-
         if (rainCheckBox.isSelected()) {
-            openChartWindow("Opady", "mm", weatherData.getRainData(), weatherData.getTimeLabels());
+            openChartWindow("Precipitation", "mm", weatherData.getRainData(), weatherData.getTimeLabels());
         }
-
         if (pressureCheckBox.isSelected()) {
-            openChartWindow("Ciśnienie", "hPa", weatherData.getPressureData(), weatherData.getTimeLabels());
+            openChartWindow("Pressure", "hPa", weatherData.getPressureData(), weatherData.getTimeLabels());
         }
     }
 
     /**
-     * Otwiera okno z wykresem
+     * Opens a new window with a chart for the specified data.
      */
     private void openChartWindow(String title, String yAxisLabel, List<Double> data, List<String> labels) {
         try {
+            // Load chart FXML and set up controller
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/weatherappjava/chart-view.fxml"));
             Scene scene = new Scene(loader.load(), 800, 600);
 
@@ -86,28 +85,30 @@ public class WeatherVisualizationController {
             chartController.setupChart(title, yAxisLabel, data, labels);
             chartController.setWindowTitle(title);
 
+            // Display the chart in a new window
             Stage stage = new Stage();
             stage.setTitle(title);
             stage.setScene(scene);
             stage.show();
         } catch (Exception e) {
-            mainController.getStatusLabel().setText("Błąd podczas tworzenia wykresu: " + e.getMessage());
+            mainController.getStatusLabel().setText("Error creating chart: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Sprawdza, czy mamy dane do wizualizacji
+     * Checks if weather data is available for visualization.
      */
     private boolean weatherDataHasData() {
         return !mainController.getWeatherData().getTimeLabels().isEmpty();
     }
 
-    // Settery dla kontrolek wizualizacji - będą ustawiane przez inicjalizację FXML
+    // Setters for UI elements, configured during FXML initialization
     public void setWindSpeedCheckBox(CheckBox checkBox) { this.windSpeedCheckBox = checkBox; }
     public void setSoilTempCheckBox(CheckBox checkBox) { this.soilTempCheckBox = checkBox; }
     public void setAirTempCheckBox(CheckBox checkBox) { this.airTempCheckBox = checkBox; }
     public void setRainCheckBox(CheckBox checkBox) { this.rainCheckBox = checkBox; }
     public void setPressureCheckBox(CheckBox checkBox) { this.pressureCheckBox = checkBox; }
-    public void setChartOptionsPanel(VBox panel) { this.chartOptionsPanel = panel; }
+    public void setChartOptionsPanel(VBox panel) { // UI elements for chart options
+    }
 }

@@ -10,20 +10,22 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 /**
- * Fabryka odpowiedzialna za inicjalizację kontrolerów i powiązanie ich ze sobą
+ * Factory class for initializing and wiring controllers in the weather application.
  */
 public class MainControllerFactory {
 
     /**
-     * Tworzy i inicjalizuje główny kontroler wraz z jego podkontrolerami
+     * Creates and initializes the main controller, linking it with sub-controllers and setting up the UI.
      */
     public static MainController createMainController(Stage primaryStage) throws IOException {
+        // Load the main FXML file
         FXMLLoader loader = new FXMLLoader(MainControllerFactory.class.getResource("/com/example/weatherappjava/main-view.fxml"));
         Parent root = loader.load();
 
+        // Get the MainController instance from the loader
         MainController mainController = loader.getController();
 
-        // Pobierz referencje do kontrolek wizualizacji z FXML
+        // Initialize WeatherVisualizationController and link UI elements
         WeatherVisualizationController visualizationController = new WeatherVisualizationController(mainController);
         visualizationController.setWindSpeedCheckBox((CheckBox) root.lookup("#windSpeedCheckBox"));
         visualizationController.setSoilTempCheckBox((CheckBox) root.lookup("#soilTempCheckBox"));
@@ -32,9 +34,7 @@ public class MainControllerFactory {
         visualizationController.setPressureCheckBox((CheckBox) root.lookup("#pressureCheckBox"));
         visualizationController.setChartOptionsPanel((VBox) root.lookup("#chartOptionsPanel"));
 
-        // Możesz dodać podobne inicjalizacje dla innych kontrolerów
-
-        // Ustaw scenę i wyświetl
+        // Set up the scene and display the stage
         Scene scene = new Scene(root, 900, 700);
         primaryStage.setTitle("Weather App");
         primaryStage.setScene(scene);

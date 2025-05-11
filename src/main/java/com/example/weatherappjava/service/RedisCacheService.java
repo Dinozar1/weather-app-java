@@ -10,23 +10,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Serwis obsługujący cachowanie danych pogodowych w Redis
+ * Singleton service for caching weather data in Redis.
  */
 public class RedisCacheService {
     private static final Logger LOGGER = Logger.getLogger(RedisCacheService.class.getName());
 
-    // Stałe określające czas życia cache'a (TTL) w sekundach
-    private static final int FORECAST_TTL = 3600; // 1 godzina dla prognoz
-    private static final int HISTORICAL_TTL = 86400 * 7; // 7 dni dla danych historycznych
+    // Cache TTL constants (in seconds)
+    private static final int FORECAST_TTL = 3600; // 1 hour for forecasts
+    private static final int HISTORICAL_TTL = 86400 * 7; // 7 days for historical data
 
-    // Połączenie z Redis
     private final JedisPool jedisPool;
-
-    // Singleton instance
     private static RedisCacheService instance;
 
     /**
-     * Metoda zwracająca instancję serwisu (Singleton pattern)
+     * Returns the singleton instance of the cache service.
      */
     public static synchronized RedisCacheService getInstance() {
         if (instance == null) {
@@ -36,10 +33,10 @@ public class RedisCacheService {
     }
 
     /**
-     * Konstruktor prywatny (Singleton pattern)
+     * Private constructor initializing Redis connection pool.
      */
     private RedisCacheService() {
-        // Konfiguracja połączenia z Redis
+        // Configure Redis connection pool
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxTotal(10);
         poolConfig.setMaxIdle(5);
@@ -48,82 +45,81 @@ public class RedisCacheService {
         poolConfig.setTestOnReturn(true);
         poolConfig.setTestWhileIdle(true);
 
-        // Połączenie z Redis - domyślnie localhost:6379
+        // Connect to Redis (default: localhost:6379)
         this.jedisPool = new JedisPool(poolConfig, "localhost", 6379);
-
-        LOGGER.info("Inicjalizacja połączenia z Redis");
+        LOGGER.info("Initialized Redis connection");
     }
 
     /**
-     * Sprawdza, czy dane są dostępne w cache
+     * Checks if data exists in the cache for a given key.
      */
     public boolean hasCache(String key) {
         try (Jedis jedis = jedisPool.getResource()) {
             return jedis.exists(key);
         } catch (JedisConnectionException e) {
-            LOGGER.log(Level.WARNING, "Nie można połączyć się z Redis: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Failed to connect to Redis: " + e.getMessage());
             return false;
         }
     }
 
     /**
-     * Pobiera dane z cache
+     * Retrieves data from the cache.
      */
     public String getFromCache(String key) {
         try (Jedis jedis = jedisPool.getResource()) {
             return jedis.get(key);
         } catch (JedisConnectionException e) {
-            LOGGER.log(Level.WARNING, "Nie można połączyć się z Redis: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Failed to connect to Redis: " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * Zapisuje dane do cache z określonym TTL
+     * Saves data to the cache with a specified TTL.
      */
     public void saveToCache(String key, String data, boolean isForecast) {
         try (Jedis jedis = jedisPool.getResource()) {
             int ttl = isForecast ? FORECAST_TTL : HISTORICAL_TTL;
             jedis.setex(key, ttl, data);
-            LOGGER.info("Zapisano dane do cache z kluczem: " + key + " (TTL: " + ttl + "s)");
+            LOGGER.info("Cached data with key: " + key + " (TTL: " + ttl + "s)");
         } catch (JedisConnectionException e) {
-            LOGGER.log(Level.WARNING, "Nie można połączyć się z Redis: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Failed to connect to Redis: " + e.getMessage());
         }
     }
 
     /**
-     * Generuje klucz cache dla prognozy pogody
+     * Generates a cache key for forecast data.
      */
     public String generateForecastCacheKey(double latitude, double longitude) {
         return String.format("forecast:%f:%f", latitude, longitude);
     }
 
     /**
-     * Generuje klucz cache dla danych historycznych
+     * Generates a cache key for historical data.
      */
     public String generateHistoricalCacheKey(double latitude, double longitude, LocalDate startDate, LocalDate endDate) {
         return String.format("historical:%f:%f:%s:%s", latitude, longitude, startDate, endDate);
     }
 
     /**
-     * Usuwa wszystkie dane z cache
+     * Clears all data from the Redis cache.
      */
     public void clearCache() {
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.flushAll();
-            LOGGER.info("Cache został wyczyszczony");
+            LOGGER.info("Cache cleared");
         } catch (JedisConnectionException e) {
-            LOGGER.log(Level.WARNING, "Nie można połączyć się z Redis: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Failed to connect to Redis: " + e.getMessage());
         }
     }
 
     /**
-     * Zamyka połączenie z Redis
+     * Closes the Redis connection pool.
      */
     public void close() {
         if (jedisPool != null && !jedisPool.isClosed()) {
             jedisPool.close();
-            LOGGER.info("Połączenie z Redis zostało zamknięte");
+            LOGGER.info("Redis connection closed");
         }
     }
 }

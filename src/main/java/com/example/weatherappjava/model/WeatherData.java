@@ -3,7 +3,11 @@ package com.example.weatherappjava.model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Model class representing weather data for display and visualization.
+ */
 public class WeatherData {
+    // Current weather metrics
     private double temperature;
     private double windSpeed;
     private double humidity;
@@ -12,15 +16,15 @@ public class WeatherData {
     private double precipitation;
     private String time;
 
-    // Dane do wykresów
-    private List<Double> windSpeedData = new ArrayList<>();
-    private List<Double> soilTempData = new ArrayList<>();
-    private List<Double> airTempData = new ArrayList<>();
-    private List<Double> rainData = new ArrayList<>();
-    private List<Double> pressureData = new ArrayList<>();
-    private List<String> timeLabels = new ArrayList<>();
+    // Chart data lists (immutable references)
+    private final List<Double> windSpeedData = new ArrayList<>();
+    private final List<Double> soilTempData = new ArrayList<>();
+    private final List<Double> airTempData = new ArrayList<>();
+    private final List<Double> rainData = new ArrayList<>();
+    private final List<Double> pressureData = new ArrayList<>();
+    private final List<String> timeLabels = new ArrayList<>();
 
-    // Gettery i settery - pojedyncze wartości
+    // Getters and setters for current weather metrics
     public double getTemperature() {
         return temperature;
     }
@@ -77,7 +81,9 @@ public class WeatherData {
         this.time = time;
     }
 
-    // Metody do zarządzania danymi wykresów
+    /**
+     * Clears all chart data lists.
+     */
     public void clearChartData() {
         windSpeedData.clear();
         soilTempData.clear();
@@ -87,6 +93,9 @@ public class WeatherData {
         timeLabels.clear();
     }
 
+    /**
+     * Adds a data point for all chart metrics with a time label.
+     */
     public void addChartDataPoint(double windSpeed, double soilTemp, double airTemp,
                                   double rain, double pressure, String timeLabel) {
         windSpeedData.add(windSpeed);
@@ -97,52 +106,28 @@ public class WeatherData {
         timeLabels.add(timeLabel);
     }
 
-    // Gettery dla list danych wykresów
+    // Getters for chart data lists
     public List<Double> getWindSpeedData() {
         return windSpeedData;
-    }
-
-    public void setWindSpeedData(List<Double> windSpeedData) {
-        this.windSpeedData = windSpeedData;
     }
 
     public List<Double> getSoilTempData() {
         return soilTempData;
     }
 
-    public void setSoilTempData(List<Double> soilTempData) {
-        this.soilTempData = soilTempData;
-    }
-
     public List<Double> getAirTempData() {
         return airTempData;
-    }
-
-    public void setAirTempData(List<Double> airTempData) {
-        this.airTempData = airTempData;
     }
 
     public List<Double> getRainData() {
         return rainData;
     }
 
-    public void setRainData(List<Double> rainData) {
-        this.rainData = rainData;
-    }
-
     public List<Double> getPressureData() {
         return pressureData;
     }
 
-    public void setPressureData(List<Double> pressureData) {
-        this.pressureData = pressureData;
-    }
-
     public List<String> getTimeLabels() {
         return timeLabels;
-    }
-
-    public void setTimeLabels(List<String> timeLabels) {
-        this.timeLabels = timeLabels;
     }
 }

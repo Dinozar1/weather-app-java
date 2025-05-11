@@ -8,17 +8,20 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * Kontroler odpowiedzialny za wyświetlanie danych pogodowych
+ * Controller for displaying weather data in the UI.
  */
 public class WeatherDisplayController {
     private final MainController mainController;
 
+    /**
+     * Constructor linking to the main controller.
+     */
     public WeatherDisplayController(MainController mainController) {
         this.mainController = mainController;
     }
 
     /**
-     * Wyświetla dane pogodowe dla prognozy
+     * Displays current weather and forecast data in UI labels.
      */
     public void displayWeatherData(WeatherData weatherData, String locationName) {
         mainController.getLocationLabel().setText(locationName);
@@ -32,46 +35,47 @@ public class WeatherDisplayController {
     }
 
     /**
-     * Wyświetla dane pogodowe dla historii
+     * Displays historical weather data, marking current weather fields as unavailable.
      */
     public void displayHistoricalWeatherData(WeatherData weatherData, String locationName) {
-        mainController.getLocationLabel().setText(locationName + " (Dane historyczne)");
-        mainController.getTemperatureLabel().setText("N/D - tryb historyczny");
-        mainController.getWindSpeedLabel().setText("N/D - tryb historyczny");
-        mainController.getHumidityLabel().setText("N/D - tryb historyczny");
-        mainController.getPressureLabel().setText("N/D - tryb historyczny");
-        mainController.getSoilTemperatureLabel().setText("N/D - tryb historyczny");
-        mainController.getRainLabel().setText("N/D - tryb historyczny");
+        mainController.getLocationLabel().setText(locationName + " (Historical Data)");
+        mainController.getTemperatureLabel().setText("N/A - Historical Mode");
+        mainController.getWindSpeedLabel().setText("N/A - Historical Mode");
+        mainController.getHumidityLabel().setText("N/A - Historical Mode");
+        mainController.getPressureLabel().setText("N/A - Historical Mode");
+        mainController.getSoilTemperatureLabel().setText("N/A - Historical Mode");
+        mainController.getRainLabel().setText("N/A - Historical Mode");
         mainController.getUpdateTimeLabel().setText(weatherData.getTime());
     }
 
     /**
-     * Wyświetla surowe dane JSON
+     * Shows raw JSON responses in a new window.
      */
     public void showRawData(String rawGeoResponse, String rawWeatherResponse) {
+        // Create a new stage for raw data
         Stage rawDataStage = new Stage();
-        rawDataStage.setTitle("Surowe dane JSON");
+        rawDataStage.setTitle("Raw JSON Data");
 
+        // Set up the text area for JSON display
         TextArea textArea = new TextArea();
         textArea.setEditable(false);
         textArea.setWrapText(true);
         textArea.setPrefSize(600, 500);
 
+        // Build content with formatted JSON
         StringBuilder content = new StringBuilder();
-
         if (rawGeoResponse != null) {
-            content.append("Dane geolokalizacyjne:\n")
+            content.append("Geolocation Data:\n")
                     .append(JsonParser.formatJson(rawGeoResponse))
                     .append("\n\n");
         }
-
         if (rawWeatherResponse != null) {
-            content.append("Dane pogodowe:\n")
+            content.append("Weather Data:\n")
                     .append(JsonParser.formatJson(rawWeatherResponse));
         }
+        textArea.setText(content.length() > 0 ? content.toString() : "No data available");
 
-        textArea.setText(content.length() > 0 ? content.toString() : "Brak danych do wyświetlenia");
-
+        // Display in a new window
         Scene scene = new Scene(new VBox(textArea));
         rawDataStage.setScene(scene);
         rawDataStage.show();

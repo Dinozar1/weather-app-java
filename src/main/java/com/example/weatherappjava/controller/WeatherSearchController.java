@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Kontroler odpowiedzialny za wyszukiwanie danych pogodowych
+ * Controller for handling weather data searches.
  */
 public class WeatherSearchController {
     private final MainController mainController;
@@ -17,6 +17,9 @@ public class WeatherSearchController {
     private final HistoricalWeatherService historicalWeatherService;
     private final WeatherDisplayController displayController;
 
+    /**
+     * Constructor initializing services and display controller.
+     */
     public WeatherSearchController(MainController mainController) {
         this.mainController = mainController;
         this.weatherService = new WeatherService();
@@ -24,18 +27,14 @@ public class WeatherSearchController {
         this.displayController = new WeatherDisplayController(mainController);
     }
 
-    public void handleSearch(
-            boolean isForecastMode,
-            boolean isCityMode,
-            String city,
-            String latText,
-            String lonText,
-            LocalDate startDate,
-            LocalDate endDate) {
-
+    /**
+     * Handles search requests based on input parameters and mode (forecast or historical).
+     */
+    public void handleSearch(boolean isForecastMode, boolean isCityMode, String city, String latText, String lonText, LocalDate startDate, LocalDate endDate) {
+        // Validate city input
         if (isCityMode) {
             if (city.isEmpty()) {
-                mainController.getStatusLabel().setText("Wprowadź nazwę miasta.");
+                mainController.getStatusLabel().setText("Enter a city name.");
                 return;
             }
             if (isForecastMode) {
@@ -44,8 +43,9 @@ public class WeatherSearchController {
                 getHistoricalWeatherByCity(city, startDate, endDate);
             }
         } else {
+            // Validate coordinates input
             if (latText.isEmpty() || lonText.isEmpty()) {
-                mainController.getStatusLabel().setText("Wprowadź obie współrzędne geograficzne.");
+                mainController.getStatusLabel().setText("Enter both geographic coordinates.");
                 return;
             }
 
@@ -54,12 +54,11 @@ public class WeatherSearchController {
                 double longitude = Double.parseDouble(lonText);
 
                 if (latitude < -90 || latitude > 90) {
-                    mainController.getStatusLabel().setText("Szerokość geograficzna musi być w zakresie od -90 do 90.");
+                    mainController.getStatusLabel().setText("Latitude must be between -90 and 90.");
                     return;
                 }
-
                 if (longitude < -180 || longitude > 180) {
-                    mainController.getStatusLabel().setText("Długość geograficzna musi być w zakresie od -180 do 180.");
+                    mainController.getStatusLabel().setText("Longitude must be between -180 and 180.");
                     return;
                 }
 
@@ -70,15 +69,17 @@ public class WeatherSearchController {
                     getHistoricalWeatherByCoordinates(location, startDate, endDate);
                 }
             } catch (NumberFormatException e) {
-                mainController.getStatusLabel().setText("Wprowadź poprawne wartości liczbowe dla współrzędnych.");
+                mainController.getStatusLabel().setText("Enter valid numeric coordinates.");
             }
         }
     }
 
+    /**
+     * Fetches weather data for a city using geolocation service.
+     */
     private void getWeatherByCity(String city) {
-        mainController.getStatusLabel().setText("");
+        mainController.getStatusLabel().setText("Fetching weather data...");
         mainController.getSearchButton().setDisable(true);
-        mainController.getStatusLabel().setText("Pobieranie danych pogodowych...");
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -86,17 +87,19 @@ public class WeatherSearchController {
                 getWeatherByCoordinates(location);
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
-                    mainController.getStatusLabel().setText("Błąd: " + e.getMessage());
+                    mainController.getStatusLabel().setText("Error: " + e.getMessage());
                     mainController.getSearchButton().setDisable(false);
                 });
             }
         });
     }
 
+    /**
+     * Fetches historical weather data for a city.
+     */
     private void getHistoricalWeatherByCity(String city, LocalDate startDate, LocalDate endDate) {
-        mainController.getStatusLabel().setText("");
+        mainController.getStatusLabel().setText("Fetching historical weather data...");
         mainController.getSearchButton().setDisable(true);
-        mainController.getStatusLabel().setText("Pobieranie historycznych danych pogodowych...");
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -104,18 +107,20 @@ public class WeatherSearchController {
                 getHistoricalWeatherByCoordinates(location, startDate, endDate);
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
-                    mainController.getStatusLabel().setText("Błąd: " + e.getMessage());
+                    mainController.getStatusLabel().setText("Error: " + e.getMessage());
                     mainController.getSearchButton().setDisable(false);
                 });
             }
         });
     }
 
+    /**
+     * Fetches current weather data for given coordinates and updates UI.
+     */
     private void getWeatherByCoordinates(LocationData location) {
         if (!mainController.getSearchButton().isDisabled()) {
-            mainController.getStatusLabel().setText("");
+            mainController.getStatusLabel().setText("Fetching weather data...");
             mainController.getSearchButton().setDisable(true);
-            mainController.getStatusLabel().setText("Pobieranie danych pogodowych...");
         }
 
         CompletableFuture.runAsync(() -> {
@@ -126,23 +131,25 @@ public class WeatherSearchController {
                 javafx.application.Platform.runLater(() -> {
                     displayController.displayWeatherData(weatherData, location.toString());
                     weatherService.displayForecastInGrid(mainController.getForecastGrid(), weatherData);
-                    mainController.getStatusLabel().setText("Dane pogodowe zostały pobrane.");
+                    mainController.getStatusLabel().setText("Weather data retrieved.");
                     mainController.getSearchButton().setDisable(false);
                 });
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
-                    mainController.getStatusLabel().setText("Błąd: " + e.getMessage());
+                    mainController.getStatusLabel().setText("Error: " + e.getMessage());
                     mainController.getSearchButton().setDisable(false);
                 });
             }
         });
     }
 
+    /**
+     * Fetches historical weather data for given coordinates and updates UI.
+     */
     private void getHistoricalWeatherByCoordinates(LocationData location, LocalDate startDate, LocalDate endDate) {
         if (!mainController.getSearchButton().isDisabled()) {
-            mainController.getStatusLabel().setText("");
+            mainController.getStatusLabel().setText("Fetching historical weather data...");
             mainController.getSearchButton().setDisable(true);
-            mainController.getStatusLabel().setText("Pobieranie historycznych danych pogodowych...");
         }
 
         CompletableFuture.runAsync(() -> {
@@ -153,22 +160,24 @@ public class WeatherSearchController {
                 javafx.application.Platform.runLater(() -> {
                     displayController.displayHistoricalWeatherData(weatherData, location.toString());
                     historicalWeatherService.displayHistoricalDataInGrid(mainController.getForecastGrid(), weatherData);
-                    mainController.getStatusLabel().setText("Historyczne dane pogodowe zostały pobrane.");
+                    mainController.getStatusLabel().setText("Historical weather data retrieved.");
                     mainController.getSearchButton().setDisable(false);
                 });
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
-                    mainController.getStatusLabel().setText("Błąd: " + e.getMessage());
+                    mainController.getStatusLabel().setText("Error: " + e.getMessage());
                     mainController.getSearchButton().setDisable(false);
                 });
             }
         });
     }
 
+    /**
+     * Returns the raw weather response from either forecast or historical service.
+     */
     public String getRawWeatherResponse() {
         String forecastResponse = weatherService.getRawWeatherResponse();
         String historicalResponse = historicalWeatherService.getRawWeatherResponse();
-
         return forecastResponse != null ? forecastResponse : historicalResponse;
     }
 }

@@ -16,72 +16,70 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Controller for managing the line chart display and data export in the weather application.
+ */
 public class ChartController {
-    @FXML
-    private LineChart<Number, Number> dataChart;
+    @FXML private LineChart<Number, Number> dataChart;
+    @FXML private NumberAxis xAxis;
+    @FXML private NumberAxis yAxis;
+    @FXML private Label titleLabel;
+    @FXML private Button exportButton;
 
-    @FXML
-    private NumberAxis xAxis;
-
-    @FXML
-    private NumberAxis yAxis;
-
-    @FXML
-    private Label titleLabel;
-
-    @FXML
-    private Button exportButton;
-
+    // Data for chart and export
     private List<Double> currentValues;
     private List<String> currentLabels;
     private String chartTitle;
     private String yAxisLabel;
 
+    /**
+     * Initializes the chart with basic settings.
+     */
     public void initialize() {
-        // Basic chart setup
-        dataChart.setAnimated(false);
-        dataChart.setCreateSymbols(true);
-        dataChart.setLegendVisible(false);
+        dataChart.setAnimated(false); // Disable animations for smoother updates
+        dataChart.setCreateSymbols(true); // Show data points as symbols
+        dataChart.setLegendVisible(false); // Hide legend as it's unnecessary
     }
 
+    /**
+     * Configures the chart with provided data, title, and axis labels.
+     */
     public void setupChart(String title, String yAxisLabel, List<Double> values, List<String> labels) {
-        // Store the data for export functionality
+        // Store data for export
         this.chartTitle = title;
         this.yAxisLabel = yAxisLabel;
         this.currentValues = values;
         this.currentLabels = labels;
 
-        // Set title and axis labels
+        // Update UI elements
         titleLabel.setText(title);
         yAxis.setLabel(yAxisLabel);
 
-        // Create a series
+        // Create and populate chart series
         XYChart.Series<Number, Number> series = new XYChart.Series<>();
-
-        // Add data points
         for (int i = 0; i < values.size(); i++) {
             series.getData().add(new XYChart.Data<>(i, values.get(i)));
         }
 
-        // Clear previous data and add the new series
+        // Update chart with new data
         dataChart.getData().clear();
         dataChart.getData().add(series);
 
-        // If we have labels for x-axis (like dates), format them
+        // Format x-axis labels if provided
         if (labels != null && !labels.isEmpty()) {
             xAxis.setTickLabelFormatter(new NumberAxis.DefaultFormatter(xAxis) {
                 @Override
                 public String toString(Number object) {
                     int index = object.intValue();
-                    if (index >= 0 && index < labels.size()) {
-                        return labels.get(index);
-                    }
-                    return "";
+                    return (index >= 0 && index < labels.size()) ? labels.get(index) : "";
                 }
             });
         }
     }
 
+    /**
+     * Sets the window title for the chart stage.
+     */
     public void setWindowTitle(String title) {
         Stage stage = (Stage) dataChart.getScene().getWindow();
         if (stage != null) {
@@ -89,60 +87,66 @@ public class ChartController {
         }
     }
 
+    /**
+     * Handles export button click, opening a file chooser to save chart data as a text file.
+     */
     @FXML
     public void onExportButtonClick() {
         if (currentValues == null || currentLabels == null || currentValues.isEmpty()) {
-            return;
+            return; // Exit if no data to export
         }
 
+        // Configure file chooser
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Zapisz dane wykresu");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Pliki tekstowe", "*.txt"));
+        fileChooser.setTitle("Save Chart Data");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
 
-        // Nazwa pliku bazująca na tytule wykresu z datą i czasem
+        // Generate default filename with timestamp
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
         String timestamp = LocalDateTime.now().format(formatter);
         String sanitizedTitle = chartTitle.replaceAll("[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]", "_");
         fileChooser.setInitialFileName(sanitizedTitle + "_" + timestamp + ".txt");
 
+        // Show the save dialog and export if a file is selected
         Stage stage = (Stage) dataChart.getScene().getWindow();
         File selectedFile = fileChooser.showSaveDialog(stage);
-
         if (selectedFile != null) {
             exportDataToFile(selectedFile);
         }
     }
 
+    /**
+     * Exports chart data to a text file with metadata.
+     */
     private void exportDataToFile(File file) {
         try (FileWriter writer = new FileWriter(file)) {
-            // Zapisz informacje nagłówkowe
-            writer.write("# Dane wykresu wygenerowane: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n");
-            writer.write("# Tytuł: " + chartTitle + "\n");
-            writer.write("# Jednostka: " + yAxisLabel + "\n");
-            writer.write("# Liczba punktów danych: " + currentValues.size() + "\n");
+            // Write header information
+            writer.write("# Chart data generated: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n");
+            writer.write("# Title: " + chartTitle + "\n");
+            writer.write("# Unit: " + yAxisLabel + "\n");
+            writer.write("# Data points: " + currentValues.size() + "\n");
             writer.write("#\n");
 
-            // Zapisz nagłówki kolumn
-            writer.write("# Indeks\tCzas\tWartość\n");
+            // Write column headers
+            writer.write("# Index\tTime\tValue\n");
             writer.write("# ----------------------------------\n");
 
-            // Zapisz dane
+            // Write data rows
             for (int i = 0; i < currentValues.size(); i++) {
                 writer.write(i + "\t" + currentLabels.get(i) + "\t" + currentValues.get(i) + "\n");
             }
 
-            // Dodaj metadane w formacie pozwalającym na odtworzenie wykresu
+            // Write metadata for chart reconstruction
             writer.write("\n# METADATA\n");
-            writer.write("FORMAT=1.0\n");  // Wersja formatu danych
+            writer.write("FORMAT=1.0\n");
             writer.write("TYPE=LINE_CHART\n");
             writer.write("TITLE=" + chartTitle + "\n");
             writer.write("YAXIS=" + yAxisLabel + "\n");
-            writer.write("XAXIS=Czas\n");
+            writer.write("XAXIS=Time\n");
             writer.write("# END METADATA\n");
 
         } catch (IOException e) {
-            System.err.println("Błąd podczas eksportu danych wykresu: " + e.getMessage());
+            System.err.println("Error exporting chart data: " + e.getMessage());
             e.printStackTrace();
         }
     }

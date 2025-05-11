@@ -1,6 +1,5 @@
 package com.example.weatherappjava;
 
-import com.example.weatherappjava.controller.MainController;
 import com.example.weatherappjava.controller.MainControllerFactory;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -8,12 +7,12 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 /**
- * Główna klasa aplikacji
+ * Main class for the weather application.
  */
 public class WeatherApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
-        MainController mainController = MainControllerFactory.createMainController(stage);
+        MainControllerFactory.createMainController(stage);
         stage.show();
     }
 

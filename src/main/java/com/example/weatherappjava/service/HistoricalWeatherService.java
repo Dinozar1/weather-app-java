@@ -15,18 +15,28 @@ import java.time.LocalDate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Service for fetching and processing historical weather data from the Open-Meteo archive API.
+ */
 public class HistoricalWeatherService {
     private static final Logger LOGGER = Logger.getLogger(HistoricalWeatherService.class.getName());
     private String rawWeatherResponse;
     private final RedisCacheService cacheService = RedisCacheService.getInstance();
 
+    /**
+     * Returns the raw JSON response from the last API request.
+     */
     public String getRawWeatherResponse() {
         return rawWeatherResponse;
     }
 
+    /**
+     * Fetches historical weather data for a location and date range, using cache if available.
+     */
     public WeatherData getHistoricalWeather(LocationData location, LocalDate startDate, LocalDate endDate) throws IOException {
+        // Validate input dates
         if (startDate == null || endDate == null) {
-            throw new IllegalArgumentException("Wybierz daty początkową i końcową.");
+            throw new IllegalArgumentException("Select start and end dates.");
         }
 
         String startDateStr = startDate.toString();
@@ -34,16 +44,16 @@ public class HistoricalWeatherService {
         String cacheKey = cacheService.generateHistoricalCacheKey(location.getLatitude(), location.getLongitude(), startDate, endDate);
         boolean usedCache = false;
 
-        // Najpierw sprawdź cache
+        // Check cache first
         if (cacheService.hasCache(cacheKey)) {
-            LOGGER.info("Znaleziono dane historyczne w cache dla: " + location.getName());
+            LOGGER.info("Found historical data in cache for: " + location.getName());
             rawWeatherResponse = cacheService.getFromCache(cacheKey);
             usedCache = true;
         } else {
-            // Jeśli brak danych w cache, pobierz z API
+            // Fetch from API if not in cache
             try {
-                LOGGER.info("Próba pobierania danych historycznych z API dla: " + location.getName() +
-                        " od " + startDateStr + " do " + endDateStr);
+                LOGGER.info("Fetching historical data from API for: " + location.getName() +
+                        " from " + startDateStr + " to " + endDateStr);
                 String historicalWeatherApiUrl = "https://archive-api.open-meteo.com/v1/archive?latitude=" + location.getLatitude() +
                         "&longitude=" + location.getLongitude() +
                         "&start_date=" + startDateStr +
@@ -55,44 +65,43 @@ public class HistoricalWeatherService {
                 rawWeatherResponse = HttpUtil.makeHttpRequest(historicalWeatherApiUrl);
                 cacheService.saveToCache(cacheKey, rawWeatherResponse, false);
             } catch (UnknownHostException e) {
-                LOGGER.warning("Brak połączenia z internetem, sprawdzanie cache...");
+                LOGGER.warning("No internet connection, checking cache...");
                 usedCache = true;
             } catch (IOException e) {
-                LOGGER.warning("Błąd pobierania z API: " + e.getMessage() + ", sprawdzanie cache...");
+                LOGGER.warning("API fetch error: " + e.getMessage() + ", checking cache...");
                 usedCache = true;
             }
         }
 
-        // Jeśli użyto cache lub wystąpił błąd, spróbuj pobrać z cache
+        // Fallback to cache if API failed
         if (usedCache && rawWeatherResponse == null) {
             if (cacheService.hasCache(cacheKey)) {
-                LOGGER.info("Znaleziono dane historyczne w cache dla: " + location.getName());
+                LOGGER.info("Found historical data in cache for: " + location.getName());
                 rawWeatherResponse = cacheService.getFromCache(cacheKey);
             } else {
-                throw new IOException("Brak połączenia z internetem i brak danych w cache dla lokalizacji: " +
-                        location.getName() + " od " + startDateStr + " do " + endDateStr);
+                throw new IOException("No internet connection and no cached data for: " +
+                        location.getName() + " from " + startDateStr + " to " + endDateStr);
             }
         }
 
-        // Tworzenie i wypełnianie obiektu WeatherData
+        // Process and return weather data
         WeatherData weatherData = new WeatherData();
-        weatherData.setTime(startDateStr + " do " + endDateStr + (usedCache ? " (z cache)" : ""));
-
-        // Extract historical data and fill weatherData object
+        weatherData.setTime(startDateStr + " to " + endDateStr + (usedCache ? " (cached)" : ""));
         processHistoricalData(weatherData);
-
         return weatherData;
     }
 
+    /**
+     * Extracts and processes historical weather data from JSON response into a WeatherData object.
+     */
     private void processHistoricalData(WeatherData weatherData) {
         String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
         if (dailyJson != null && !dailyJson.isEmpty()) {
+            // Extract JSON arrays
             String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
             String maxTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_max");
             String minTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_min");
             String precipSumJson = JsonParser.extractStringFromJson(dailyJson, "precipitation_sum");
-
-            // Extract additional parameters
             String windSpeedJson = JsonParser.extractStringFromJson(dailyJson, "windspeed_10m_mean");
             String humidityJson = JsonParser.extractStringFromJson(dailyJson, "relative_humidity_2m_mean");
             String pressureJson = JsonParser.extractStringFromJson(dailyJson, "surface_pressure_mean");
@@ -103,70 +112,39 @@ public class HistoricalWeatherService {
             String[] maxTemps = JsonParser.parseJsonArray(maxTempJson);
             String[] minTemps = JsonParser.parseJsonArray(minTempJson);
             String[] precipSums = JsonParser.parseJsonArray(precipSumJson);
-
-            // Parse additional parameter arrays
             String[] windSpeeds = JsonParser.parseJsonArray(windSpeedJson);
             String[] humidities = JsonParser.parseJsonArray(humidityJson);
             String[] pressures = JsonParser.parseJsonArray(pressureJson);
             String[] soilTemps = JsonParser.parseJsonArray(soilTempJson);
 
-            // Zapisz dane historyczne do list
+            // Process daily data
             for (int i = 0; i < dates.length; i++) {
-                double avgTemp = 0;
-                double precipVal = 0;
-                double windSpeed = 0;
-                double humidity = 0;
-                double pressure = 0;
-                double soilTemp = 0;
+                double avgTemp = 0, precipVal = 0, windSpeed = 0, humidity = 0, pressure = 0, soilTemp = 0;
 
+                // Parse values with error handling
                 try {
                     avgTemp = (Double.parseDouble(maxTemps[i]) + Double.parseDouble(minTemps[i])) / 2;
-                } catch (NumberFormatException e) {
-                    // Ignoruj błędy parsowania
-                }
-
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
                 try {
                     precipVal = Double.parseDouble(precipSums[i]);
-                } catch (NumberFormatException e) {
-                    // Ignoruj błędy parsowania
-                }
-
-                // Parse additional parameters with error handling
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
                 try {
                     windSpeed = Double.parseDouble(windSpeeds[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    // Ignoruj błędy parsowania
-                }
-
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
                 try {
                     humidity = Double.parseDouble(humidities[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    // Ignoruj błędy parsowania
-                }
-
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
                 try {
                     pressure = Double.parseDouble(pressures[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    // Ignoruj błędy parsowania
-                }
-
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
                 try {
                     soilTemp = Double.parseDouble(soilTemps[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    // Ignoruj błędy parsowania
-                }
+                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
 
-                // Dodaj dane do list
-                weatherData.addChartDataPoint(
-                        windSpeed,
-                        soilTemp,
-                        avgTemp,
-                        precipVal,
-                        pressure,
-                        DateFormatter.formatDate(dates[i])
-                );
+                // Add data point to WeatherData
+                weatherData.addChartDataPoint(windSpeed, soilTemp, avgTemp, precipVal, pressure, DateFormatter.formatDate(dates[i]));
 
-                // If this is the first data point, set current weather properties
+                // Set initial weather properties for the first data point
                 if (i == 0) {
                     weatherData.setWindSpeed(windSpeed);
                     weatherData.setSoilTemperature(soilTemp);
@@ -177,15 +155,17 @@ public class HistoricalWeatherService {
         }
     }
 
+    /**
+     * Displays historical weather data in a grid layout
+     */
     public void displayHistoricalDataInGrid(GridPane forecastGrid, WeatherData weatherData) {
         String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
         if (dailyJson != null && !dailyJson.isEmpty()) {
+            // Extract JSON arrays
             String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
             String maxTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_max");
             String minTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_min");
             String precipSumJson = JsonParser.extractStringFromJson(dailyJson, "precipitation_sum");
-
-            // Extract additional parameters
             String windSpeedJson = JsonParser.extractStringFromJson(dailyJson, "windspeed_10m_mean");
             String humidityJson = JsonParser.extractStringFromJson(dailyJson, "relative_humidity_2m_mean");
             String soilTempJson = JsonParser.extractStringFromJson(dailyJson, "soil_temperature_0_to_7cm_mean");
@@ -195,45 +175,39 @@ public class HistoricalWeatherService {
             String[] maxTemps = JsonParser.parseJsonArray(maxTempJson);
             String[] minTemps = JsonParser.parseJsonArray(minTempJson);
             String[] precipSums = JsonParser.parseJsonArray(precipSumJson);
-
-            // Parse additional parameter arrays
             String[] windSpeeds = JsonParser.parseJsonArray(windSpeedJson);
             String[] humidities = JsonParser.parseJsonArray(humidityJson);
             String[] soilTemps = JsonParser.parseJsonArray(soilTempJson);
 
-            // Clear grid and add forecast data
+            // Clear and populate the grid
             forecastGrid.getChildren().clear();
+            forecastGrid.add(new Label("Date"), 0, 0);
+            forecastGrid.add(new Label("Min Temp"), 1, 0);
+            forecastGrid.add(new Label("Max Temp"), 2, 0);
+            forecastGrid.add(new Label("Precipitation"), 3, 0);
+            forecastGrid.add(new Label("Wind Speed"), 4, 0);
+            forecastGrid.add(new Label("Humidity"), 5, 0);
+            forecastGrid.add(new Label("Soil Temp"), 6, 0);
 
-            // Add headers
-            forecastGrid.add(new Label("Data"), 0, 0);
-            forecastGrid.add(new Label("Min. Temp."), 1, 0);
-            forecastGrid.add(new Label("Max. Temp."), 2, 0);
-            forecastGrid.add(new Label("Opady"), 3, 0);
-            forecastGrid.add(new Label("Wiatr"), 4, 0);
-            forecastGrid.add(new Label("Wilgotność"), 5, 0);
-            forecastGrid.add(new Label("Temp. gleby"), 6, 0);
-
-            // Display historical data
-            int days = Math.min(dates.length, 30); // Show up to 30 days
+            // Display up to 30 days of data
+            int days = Math.min(dates.length, 30);
             for (int i = 0; i < days; i++) {
                 forecastGrid.add(new Label(DateFormatter.formatDate(dates[i])), 0, i + 1);
                 forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);
                 forecastGrid.add(new Label(maxTemps[i] + " °C"), 2, i + 1);
                 forecastGrid.add(new Label(precipSums[i] + " mm"), 3, i + 1);
 
-                // Add additional data columns with error handling
+                // Add additional data with error handling
                 try {
                     forecastGrid.add(new Label(windSpeeds[i] + " km/h"), 4, i + 1);
                 } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
                     forecastGrid.add(new Label("N/A"), 4, i + 1);
                 }
-
                 try {
                     forecastGrid.add(new Label(humidities[i] + " %"), 5, i + 1);
                 } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
                     forecastGrid.add(new Label("N/A"), 5, i + 1);
                 }
-
                 try {
                     forecastGrid.add(new Label(soilTemps[i] + " °C"), 6, i + 1);
                 } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {

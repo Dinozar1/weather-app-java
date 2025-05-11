@@ -34,7 +34,7 @@ public class HttpUtil {
                     response.append(line);
                 }
             }
-            throw new IOException("Błąd HTTP: " + responseCode + ", Odpowiedź: " + response.toString());
+            throw new IOException("Błąd HTTP: " + responseCode + ", Odpowiedź: " + response);
         }
 
         connection.disconnect();

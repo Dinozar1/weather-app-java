@@ -38,7 +38,7 @@ public class WeatherService {
                 LOGGER.info("Próba pobierania danych prognozy z API dla: " + location.getName());
                 String weatherApiUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + location.getLatitude() +
                         "&longitude=" + location.getLongitude() +
-                        "¤t=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
+                        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
                         "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
                         "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean" +
                         "&timezone=auto&forecast_days=7";
