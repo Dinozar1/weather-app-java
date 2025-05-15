@@ -7,6 +7,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import java.time.LocalDate;
+import javafx.scene.control.DateCell;
 
 /**
  * Main controller for the weather application, managing the UI and coordinating interactions
@@ -22,6 +24,7 @@ public class MainController {
     @FXML private TextField latitudeInput;
     @FXML private TextField longitudeInput;
     @FXML private Button searchButton;
+    @FXML private ComboBox<Integer> forecastDaysComboBox;
 
     // UI elements for weather display
     @FXML private Label locationLabel;
@@ -81,6 +84,30 @@ public class MainController {
         updateInputPanelVisibility();
         updateDataModeVisibility();
 
+        // Ograniczenie dat w DatePicker do wczorajszej i wcześniejszych
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        // Ustawiamy maksymalną datę na wczoraj
+        startDatePicker.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isAfter(yesterday));
+            }
+        });
+
+        endDatePicker.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isAfter(yesterday));
+            }
+        });
+
+        // Ustawiamy domyślne wartości dat
+        endDatePicker.setValue(yesterday);
+        startDatePicker.setValue(yesterday.minusDays(7)); // Domyślnie tydzień wstecz
+
         // Initialize the visualization controller with the UI elements
         visualizationController.setChartOptionsPanel(chartOptionsPanel);
         visualizationController.setWindSpeedCheckBox(windSpeedCheckBox);
@@ -139,20 +166,11 @@ public class MainController {
                 latitudeInput.getText().trim(),
                 longitudeInput.getText().trim(),
                 startDatePicker.getValue(),
-                endDatePicker.getValue()
+                endDatePicker.getValue(),
+                forecastDaysComboBox.getValue()
         );
     }
 
-    /**
-     * Displays raw API responses via a display controller.
-     */
-    @FXML
-    protected void onShowRawDataClick() {
-        displayController.showRawData(
-                geolocationService.getRawGeoResponse(),
-                searchController.getRawWeatherResponse()
-        );
-    }
 
     /**
      * Triggers chart visualization via visualization controller.

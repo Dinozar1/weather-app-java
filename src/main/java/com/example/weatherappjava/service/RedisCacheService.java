@@ -17,7 +17,6 @@ public class RedisCacheService {
 
     // Cache TTL constants (in seconds)
     private static final int FORECAST_TTL = 3600; // 1 hour for forecasts
-    private static final int HISTORICAL_TTL = 86400 * 7; // 7 days for historical data
 
     private final JedisPool jedisPool;
     private static RedisCacheService instance;
@@ -79,9 +78,13 @@ public class RedisCacheService {
      */
     public void saveToCache(String key, String data, boolean isForecast) {
         try (Jedis jedis = jedisPool.getResource()) {
-            int ttl = isForecast ? FORECAST_TTL : HISTORICAL_TTL;
-            jedis.setex(key, ttl, data);
-            LOGGER.info("Cached data with key: " + key + " (TTL: " + ttl + "s)");
+            if (isForecast) {
+                jedis.setex(key, FORECAST_TTL, data);
+                LOGGER.info("Cached forecast data with key: " + key + " (TTL: " + FORECAST_TTL + "s)");
+            } else {
+                jedis.set(key, data);
+                LOGGER.info("Cached historical data with key: " + key + " (no TTL)");
+            }
         } catch (JedisConnectionException e) {
             LOGGER.log(Level.WARNING, "Failed to connect to Redis: " + e.getMessage());
         }
@@ -90,8 +93,8 @@ public class RedisCacheService {
     /**
      * Generates a cache key for forecast data.
      */
-    public String generateForecastCacheKey(double latitude, double longitude) {
-        return String.format("forecast:%f:%f", latitude, longitude);
+    public String generateForecastCacheKey(double latitude, double longitude, int forecastDays) {
+        return String.format("forecast:%f:%f:%d", latitude, longitude, forecastDays);
     }
 
     /**

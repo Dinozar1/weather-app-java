@@ -23,8 +23,12 @@ public class WeatherService {
         return rawWeatherResponse;
     }
 
-    public WeatherData getCurrentWeather(LocationData location) throws IOException {
-        String cacheKey = cacheService.generateForecastCacheKey(location.getLatitude(), location.getLongitude());
+    public WeatherData getCurrentWeather(LocationData location, int forecastDays) throws IOException {
+        if (forecastDays < 1 || forecastDays > 16) {
+            throw new IllegalArgumentException("Forecast days must be between 1 and 16.");
+        }
+
+        String cacheKey = cacheService.generateForecastCacheKey(location.getLatitude(), location.getLongitude(), forecastDays);
         boolean usedCache = false;
 
         // Najpierw sprawdź cache
@@ -41,7 +45,7 @@ public class WeatherService {
                         "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,soil_temperature_0cm" +
                         "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code," +
                         "windspeed_10m_mean,relative_humidity_2m_mean,surface_pressure_mean" +
-                        "&timezone=auto&forecast_days=7";
+                        "&timezone=auto&forecast_days=" + forecastDays;
 
                 rawWeatherResponse = HttpUtil.makeHttpRequest(weatherApiUrl);
                 cacheService.saveToCache(cacheKey, rawWeatherResponse, true);
@@ -172,7 +176,7 @@ public class WeatherService {
         }
     }
 
-    public void displayForecastInGrid(GridPane forecastGrid, WeatherData weatherData) {
+    public void displayForecastInGrid(GridPane forecastGrid, WeatherData weatherData, int forecastDays) {
         String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
         if (dailyJson != null && !dailyJson.isEmpty()) {
             String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
@@ -206,7 +210,7 @@ public class WeatherService {
             forecastGrid.add(new Label("Wilgotność"), 5, 0);
 
             // Display forecast data
-            int days = Math.min(dates.length, 7); // Show up to 7 days
+            int days = Math.min(dates.length, forecastDays); // Show up to forecastDays
             for (int i = 0; i < days; i++) {
                 forecastGrid.add(new Label(DateFormatter.formatDate(dates[i])), 0, i + 1);
                 forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);

@@ -1,11 +1,6 @@
 package com.example.weatherappjava.controller;
 
 import com.example.weatherappjava.model.WeatherData;
-import com.example.weatherappjava.util.JsonParser;
-import javafx.scene.Scene;
-import javafx.scene.control.TextArea;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 /**
  * Controller for displaying weather data in the UI.
@@ -25,12 +20,49 @@ public class WeatherDisplayController {
      */
     public void displayWeatherData(WeatherData weatherData, String locationName) {
         mainController.getLocationLabel().setText(locationName);
-        mainController.getTemperatureLabel().setText(String.format("%.1f °C", weatherData.getTemperature()));
-        mainController.getWindSpeedLabel().setText(String.format("%.1f km/h", weatherData.getWindSpeed()));
-        mainController.getHumidityLabel().setText(String.format("%.0f %%", weatherData.getHumidity()));
-        mainController.getPressureLabel().setText(String.format("%.1f hPa", weatherData.getPressure()));
-        mainController.getSoilTemperatureLabel().setText(String.format("%.1f °C", weatherData.getSoilTemperature()));
-        mainController.getRainLabel().setText(String.format("%.2f mm", weatherData.getPrecipitation()));
+
+        // Display temperature with null check
+        if (Double.isNaN(weatherData.getTemperature())) {
+            mainController.getTemperatureLabel().setText("Brak danych");
+        } else {
+            mainController.getTemperatureLabel().setText(String.format("%.1f °C", weatherData.getTemperature()));
+        }
+
+        // Display wind speed with null check
+        if (Double.isNaN(weatherData.getWindSpeed())) {
+            mainController.getWindSpeedLabel().setText("Brak danych");
+        } else {
+            mainController.getWindSpeedLabel().setText(String.format("%.1f km/h", weatherData.getWindSpeed()));
+        }
+
+        // Display humidity with null check
+        if (Double.isNaN(weatherData.getHumidity())) {
+            mainController.getHumidityLabel().setText("Brak danych");
+        } else {
+            mainController.getHumidityLabel().setText(String.format("%.0f %%", weatherData.getHumidity()));
+        }
+
+        // Display pressure with null check
+        if (Double.isNaN(weatherData.getPressure())) {
+            mainController.getPressureLabel().setText("Brak danych");
+        } else {
+            mainController.getPressureLabel().setText(String.format("%.1f hPa", weatherData.getPressure()));
+        }
+
+        // Display soil temperature with null check
+        if (Double.isNaN(weatherData.getSoilTemperature())) {
+            mainController.getSoilTemperatureLabel().setText("Brak danych");
+        } else {
+            mainController.getSoilTemperatureLabel().setText(String.format("%.1f °C", weatherData.getSoilTemperature()));
+        }
+
+        // Display precipitation with null check
+        if (Double.isNaN(weatherData.getPrecipitation())) {
+            mainController.getRainLabel().setText("Brak danych");
+        } else {
+            mainController.getRainLabel().setText(String.format("%.2f mm", weatherData.getPrecipitation()));
+        }
+
         mainController.getUpdateTimeLabel().setText(weatherData.getTime());
     }
 
@@ -46,38 +78,5 @@ public class WeatherDisplayController {
         mainController.getSoilTemperatureLabel().setText("N/A - Historical Mode");
         mainController.getRainLabel().setText("N/A - Historical Mode");
         mainController.getUpdateTimeLabel().setText(weatherData.getTime());
-    }
-
-    /**
-     * Shows raw JSON responses in a new window.
-     */
-    public void showRawData(String rawGeoResponse, String rawWeatherResponse) {
-        // Create a new stage for raw data
-        Stage rawDataStage = new Stage();
-        rawDataStage.setTitle("Raw JSON Data");
-
-        // Set up the text area for JSON display
-        TextArea textArea = new TextArea();
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        textArea.setPrefSize(600, 500);
-
-        // Build content with formatted JSON
-        StringBuilder content = new StringBuilder();
-        if (rawGeoResponse != null) {
-            content.append("Geolocation Data:\n")
-                    .append(JsonParser.formatJson(rawGeoResponse))
-                    .append("\n\n");
-        }
-        if (rawWeatherResponse != null) {
-            content.append("Weather Data:\n")
-                    .append(JsonParser.formatJson(rawWeatherResponse));
-        }
-        textArea.setText(content.length() > 0 ? content.toString() : "No data available");
-
-        // Display in a new window
-        Scene scene = new Scene(new VBox(textArea));
-        rawDataStage.setScene(scene);
-        rawDataStage.show();
     }
 }

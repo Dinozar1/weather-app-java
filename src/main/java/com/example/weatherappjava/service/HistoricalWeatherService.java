@@ -12,7 +12,6 @@ import javafx.scene.layout.GridPane;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.time.LocalDate;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -117,39 +116,115 @@ public class HistoricalWeatherService {
             String[] pressures = JsonParser.parseJsonArray(pressureJson);
             String[] soilTemps = JsonParser.parseJsonArray(soilTempJson);
 
+            // Track whether we have valid data for initial weather properties
+            boolean hasInitialData = false;
+            double initialWindSpeed = 0;
+            double initialSoilTemp = 0;
+            double initialHumidity = 0;
+            double initialPressure = 0;
+
             // Process daily data
             for (int i = 0; i < dates.length; i++) {
-                double avgTemp = 0, precipVal = 0, windSpeed = 0, humidity = 0, pressure = 0, soilTemp = 0;
+                // Initialize with special values to indicate missing data
+                Double avgTemp = null;
+                Double precipVal = null;
+                Double windSpeed = null;
+                Double humidity = null;
+                Double pressure = null;
+                Double soilTemp = null;
 
-                // Parse values with error handling
+                // Parse values with error handling - using null to represent missing data
                 try {
-                    avgTemp = (Double.parseDouble(maxTemps[i]) + Double.parseDouble(minTemps[i])) / 2;
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
-                try {
-                    precipVal = Double.parseDouble(precipSums[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
-                try {
-                    windSpeed = Double.parseDouble(windSpeeds[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
-                try {
-                    humidity = Double.parseDouble(humidities[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
-                try {
-                    pressure = Double.parseDouble(pressures[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
-                try {
-                    soilTemp = Double.parseDouble(soilTemps[i]);
-                } catch (NumberFormatException | NullPointerException | ArrayIndexOutOfBoundsException ignored) {}
+                    if (maxTemps != null && minTemps != null &&
+                            i < maxTemps.length && i < minTemps.length &&
+                            maxTemps[i] != null && !maxTemps[i].equals("null") &&
+                            minTemps[i] != null && !minTemps[i].equals("null")) {
 
-                // Add data point to WeatherData
-                weatherData.addChartDataPoint(windSpeed, soilTemp, avgTemp, precipVal, pressure, DateFormatter.formatDate(dates[i]));
+                        double maxTemp = Double.parseDouble(maxTemps[i]);
+                        double minTemp = Double.parseDouble(minTemps[i]);
+                        avgTemp = (maxTemp + minTemp) / 2;
+                    }
+                } catch (NumberFormatException e) {
+                    avgTemp = null;
+                }
 
-                // Set initial weather properties for the first data point
-                if (i == 0) {
-                    weatherData.setWindSpeed(windSpeed);
-                    weatherData.setSoilTemperature(soilTemp);
-                    weatherData.setHumidity(humidity);
-                    weatherData.setPressure(pressure);
+                try {
+                    if (precipSums != null && i < precipSums.length &&
+                            precipSums[i] != null && !precipSums[i].equals("null")) {
+                        precipVal = Double.parseDouble(precipSums[i]);
+                    }
+                } catch (NumberFormatException e) {
+                    precipVal = null;
+                }
+
+                try {
+                    if (windSpeeds != null && i < windSpeeds.length &&
+                            windSpeeds[i] != null && !windSpeeds[i].equals("null")) {
+                        windSpeed = Double.parseDouble(windSpeeds[i]);
+                        if (i == 0 || !hasInitialData) {
+                            initialWindSpeed = windSpeed;
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    windSpeed = null;
+                }
+
+                try {
+                    if (humidities != null && i < humidities.length &&
+                            humidities[i] != null && !humidities[i].equals("null")) {
+                        humidity = Double.parseDouble(humidities[i]);
+                        if (i == 0 || !hasInitialData) {
+                            initialHumidity = humidity;
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    humidity = null;
+                }
+
+                try {
+                    if (pressures != null && i < pressures.length &&
+                            pressures[i] != null && !pressures[i].equals("null")) {
+                        pressure = Double.parseDouble(pressures[i]);
+                        if (i == 0 || !hasInitialData) {
+                            initialPressure = pressure;
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    pressure = null;
+                }
+
+                try {
+                    if (soilTemps != null && i < soilTemps.length &&
+                            soilTemps[i] != null && !soilTemps[i].equals("null")) {
+                        soilTemp = Double.parseDouble(soilTemps[i]);
+                        if (i == 0 || !hasInitialData) {
+                            initialSoilTemp = soilTemp;
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    soilTemp = null;
+                }
+
+                // Add data point to WeatherData only if we have valid data
+                // Skip this date point on the chart if data is missing
+                if (avgTemp != null && precipVal != null && windSpeed != null && pressure != null && soilTemp != null) {
+                    weatherData.addChartDataPoint(
+                            windSpeed,
+                            soilTemp,
+                            avgTemp,
+                            precipVal,
+                            pressure,
+                            DateFormatter.formatDate(dates[i])
+                    );
+
+                    // Set initial weather properties from the first valid data point
+                    if (!hasInitialData) {
+                        hasInitialData = true;
+                        weatherData.setWindSpeed(windSpeed);
+                        weatherData.setSoilTemperature(soilTemp);
+                        weatherData.setHumidity(humidity != null ? humidity : 0);
+                        weatherData.setPressure(pressure);
+                    }
                 }
             }
         }
@@ -159,61 +234,86 @@ public class HistoricalWeatherService {
      * Displays historical weather data in a grid layout
      */
     public void displayHistoricalDataInGrid(GridPane forecastGrid, WeatherData weatherData) {
+        // Clear existing items
+        forecastGrid.getChildren().clear();
+
+        // Add headers
+        forecastGrid.add(new Label("Date"), 0, 0);
+        forecastGrid.add(new Label("Min Temp"), 1, 0);
+        forecastGrid.add(new Label("Max Temp"), 2, 0);
+        forecastGrid.add(new Label("Precipitation"), 3, 0);
+        forecastGrid.add(new Label("Wind Speed"), 4, 0);
+        forecastGrid.add(new Label("Humidity"), 5, 0);
+        forecastGrid.add(new Label("Soil Temp"), 6, 0);
+
+        // Extract data from JSON if available
         String dailyJson = JsonParser.extractStringFromJson(rawWeatherResponse, "daily");
-        if (dailyJson != null && !dailyJson.isEmpty()) {
-            // Extract JSON arrays
-            String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
-            String maxTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_max");
-            String minTempJson = JsonParser.extractStringFromJson(dailyJson, "temperature_2m_min");
-            String precipSumJson = JsonParser.extractStringFromJson(dailyJson, "precipitation_sum");
-            String windSpeedJson = JsonParser.extractStringFromJson(dailyJson, "windspeed_10m_mean");
-            String humidityJson = JsonParser.extractStringFromJson(dailyJson, "relative_humidity_2m_mean");
-            String soilTempJson = JsonParser.extractStringFromJson(dailyJson, "soil_temperature_0_to_7cm_mean");
+        if (dailyJson == null || dailyJson.isEmpty()) {
+            // If no data, just show a message in the first row
+            forecastGrid.add(new Label("No weather data available"), 0, 1, 7, 1);
+            return;
+        }
 
-            // Parse arrays
-            String[] dates = JsonParser.parseJsonArray(datesJson);
-            String[] maxTemps = JsonParser.parseJsonArray(maxTempJson);
-            String[] minTemps = JsonParser.parseJsonArray(minTempJson);
-            String[] precipSums = JsonParser.parseJsonArray(precipSumJson);
-            String[] windSpeeds = JsonParser.parseJsonArray(windSpeedJson);
-            String[] humidities = JsonParser.parseJsonArray(humidityJson);
-            String[] soilTemps = JsonParser.parseJsonArray(soilTempJson);
+        // Extract and parse date array first (required for iteration)
+        String datesJson = JsonParser.extractStringFromJson(dailyJson, "time");
+        String[] dates = JsonParser.parseJsonArray(datesJson);
+        if (dates == null || dates.length == 0) {
+            forecastGrid.add(new Label("No date data available"), 0, 1, 7, 1);
+            return;
+        }
 
-            // Clear and populate the grid
-            forecastGrid.getChildren().clear();
-            forecastGrid.add(new Label("Date"), 0, 0);
-            forecastGrid.add(new Label("Min Temp"), 1, 0);
-            forecastGrid.add(new Label("Max Temp"), 2, 0);
-            forecastGrid.add(new Label("Precipitation"), 3, 0);
-            forecastGrid.add(new Label("Wind Speed"), 4, 0);
-            forecastGrid.add(new Label("Humidity"), 5, 0);
-            forecastGrid.add(new Label("Soil Temp"), 6, 0);
+        // Extract all data arrays
+        String[] maxTemps = safeParseJsonArray(dailyJson, "temperature_2m_max");
+        String[] minTemps = safeParseJsonArray(dailyJson, "temperature_2m_min");
+        String[] precipSums = safeParseJsonArray(dailyJson, "precipitation_sum");
+        String[] windSpeeds = safeParseJsonArray(dailyJson, "windspeed_10m_mean");
+        String[] humidities = safeParseJsonArray(dailyJson, "relative_humidity_2m_mean");
+        String[] soilTemps = safeParseJsonArray(dailyJson, "soil_temperature_0_to_7cm_mean");
 
-            // Display up to 30 days of data
-            int days = Math.min(dates.length, 30);
-            for (int i = 0; i < days; i++) {
-                forecastGrid.add(new Label(DateFormatter.formatDate(dates[i])), 0, i + 1);
-                forecastGrid.add(new Label(minTemps[i] + " °C"), 1, i + 1);
-                forecastGrid.add(new Label(maxTemps[i] + " °C"), 2, i + 1);
-                forecastGrid.add(new Label(precipSums[i] + " mm"), 3, i + 1);
+        // Populate the grid with data
+        for (int i = 0; i < dates.length; i++) {
+            int row = i + 1; // Start from row 1 (after header)
 
-                // Add additional data with error handling
-                try {
-                    forecastGrid.add(new Label(windSpeeds[i] + " km/h"), 4, i + 1);
-                } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    forecastGrid.add(new Label("N/A"), 4, i + 1);
-                }
-                try {
-                    forecastGrid.add(new Label(humidities[i] + " %"), 5, i + 1);
-                } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    forecastGrid.add(new Label("N/A"), 5, i + 1);
-                }
-                try {
-                    forecastGrid.add(new Label(soilTemps[i] + " °C"), 6, i + 1);
-                } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
-                    forecastGrid.add(new Label("N/A"), 6, i + 1);
-                }
-            }
+            // Add date
+            forecastGrid.add(new Label(DateFormatter.formatDate(dates[i])), 0, row);
+
+            // Add all values with safe access
+            forecastGrid.add(new Label(safeGetValueWithUnit(minTemps, i, "°C")), 1, row);
+            forecastGrid.add(new Label(safeGetValueWithUnit(maxTemps, i, "°C")), 2, row);
+            forecastGrid.add(new Label(safeGetValueWithUnit(precipSums, i, "mm")), 3, row);
+            forecastGrid.add(new Label(safeGetValueWithUnit(windSpeeds, i, "km/h")), 4, row);
+            forecastGrid.add(new Label(safeGetValueWithUnit(humidities, i, "%")), 5, row);
+            forecastGrid.add(new Label(safeGetValueWithUnit(soilTemps, i, "°C")), 6, row);
+        }
+    }
+
+    /**
+     * Safely parses a JSON array from a JSON object
+     */
+    private String[] safeParseJsonArray(String jsonObject, String key) {
+        try {
+            String jsonArray = JsonParser.extractStringFromJson(jsonObject, key);
+            return JsonParser.parseJsonArray(jsonArray);
+        } catch (Exception e) {
+            LOGGER.warning("Error parsing JSON array for key: " + key + " - " + e.getMessage());
+            return new String[0];
+        }
+    }
+
+    /**
+     * Safely gets a value from an array with proper formatting or returns "N/A"
+     */
+    private String safeGetValueWithUnit(String[] array, int index, String unit) {
+        if (array == null || index >= array.length || array[index] == null || array[index].equals("null")) {
+            return "N/A";
+        }
+
+        try {
+            // Try to parse and format as number for validation
+            Double.parseDouble(array[index]);
+            return array[index] + " " + unit;
+        } catch (NumberFormatException e) {
+            return "N/A";
         }
     }
 }

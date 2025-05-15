@@ -12,6 +12,7 @@ module com.example.weatherappjava {
     requires com.almasb.fxgl.all;
     requires java.logging;
     requires redis.clients.jedis;
+    requires org.json;
 
     opens com.example.weatherappjava to javafx.fxml;
     exports com.example.weatherappjava;

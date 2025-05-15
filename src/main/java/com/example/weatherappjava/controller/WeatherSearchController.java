@@ -30,7 +30,7 @@ public class WeatherSearchController {
     /**
      * Handles search requests based on input parameters and mode (forecast or historical).
      */
-    public void handleSearch(boolean isForecastMode, boolean isCityMode, String city, String latText, String lonText, LocalDate startDate, LocalDate endDate) {
+    public void handleSearch(boolean isForecastMode, boolean isCityMode, String city, String latText, String lonText, LocalDate startDate, LocalDate endDate, int forecastDays) {
         // Validate city input
         if (isCityMode) {
             if (city.isEmpty()) {
@@ -38,7 +38,7 @@ public class WeatherSearchController {
                 return;
             }
             if (isForecastMode) {
-                getWeatherByCity(city);
+                getWeatherByCity(city, forecastDays);
             } else {
                 getHistoricalWeatherByCity(city, startDate, endDate);
             }
@@ -64,7 +64,7 @@ public class WeatherSearchController {
 
                 LocationData location = new LocationData(null, latitude, longitude);
                 if (isForecastMode) {
-                    getWeatherByCoordinates(location);
+                    getWeatherByCoordinates(location, forecastDays);
                 } else {
                     getHistoricalWeatherByCoordinates(location, startDate, endDate);
                 }
@@ -77,14 +77,14 @@ public class WeatherSearchController {
     /**
      * Fetches weather data for a city using geolocation service.
      */
-    private void getWeatherByCity(String city) {
+    private void getWeatherByCity(String city, int forecastDays) {
         mainController.getStatusLabel().setText("Fetching weather data...");
         mainController.getSearchButton().setDisable(true);
 
         CompletableFuture.runAsync(() -> {
             try {
                 LocationData location = mainController.getGeolocationService().getLocationByCity(city);
-                getWeatherByCoordinates(location);
+                getWeatherByCoordinates(location, forecastDays);
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
                     mainController.getStatusLabel().setText("Error: " + e.getMessage());
@@ -93,6 +93,7 @@ public class WeatherSearchController {
             }
         });
     }
+
 
     /**
      * Fetches historical weather data for a city.
@@ -117,7 +118,7 @@ public class WeatherSearchController {
     /**
      * Fetches current weather data for given coordinates and updates UI.
      */
-    private void getWeatherByCoordinates(LocationData location) {
+    private void getWeatherByCoordinates(LocationData location, int forecastDays) {
         if (!mainController.getSearchButton().isDisabled()) {
             mainController.getStatusLabel().setText("Fetching weather data...");
             mainController.getSearchButton().setDisable(true);
@@ -125,12 +126,12 @@ public class WeatherSearchController {
 
         CompletableFuture.runAsync(() -> {
             try {
-                WeatherData weatherData = weatherService.getCurrentWeather(location);
+                WeatherData weatherData = weatherService.getCurrentWeather(location, forecastDays);
                 mainController.setWeatherData(weatherData);
 
                 javafx.application.Platform.runLater(() -> {
                     displayController.displayWeatherData(weatherData, location.toString());
-                    weatherService.displayForecastInGrid(mainController.getForecastGrid(), weatherData);
+                    weatherService.displayForecastInGrid(mainController.getForecastGrid(), weatherData, forecastDays);
                     mainController.getStatusLabel().setText("Weather data retrieved.");
                     mainController.getSearchButton().setDisable(false);
                 });

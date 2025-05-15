@@ -4,6 +4,8 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.collections.FXCollections?>
+<?import java.lang.Integer?>
 <VBox alignment="CENTER" prefHeight="700.0" prefWidth="700.0" spacing="15.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.example.weatherappjava.controller.MainController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
@@ -49,7 +51,32 @@
 
     <!-- Panel dla trybu prognozy (domyślnie widoczny) -->
     <HBox fx:id="forecastInputPanel" alignment="CENTER" spacing="10.0">
-        <Label text="Prognoza pogody na przyszłe dni" />
+        <Label text="Liczba dni prognozy:" />
+        <ComboBox fx:id="forecastDaysComboBox" prefWidth="100.0">
+            <items>
+                <FXCollections fx:factory="observableArrayList">
+                    <Integer fx:value="1" />
+                    <Integer fx:value="2" />
+                    <Integer fx:value="3" />
+                    <Integer fx:value="4" />
+                    <Integer fx:value="5" />
+                    <Integer fx:value="6" />
+                    <Integer fx:value="7" />
+                    <Integer fx:value="8" />
+                    <Integer fx:value="9" />
+                    <Integer fx:value="10" />
+                    <Integer fx:value="11" />
+                    <Integer fx:value="12" />
+                    <Integer fx:value="13" />
+                    <Integer fx:value="14" />
+                    <Integer fx:value="15" />
+                    <Integer fx:value="16" />
+                </FXCollections>
+            </items>
+            <value>
+                <Integer fx:value="7" />
+            </value>
+        </ComboBox>
     </HBox>
 
     <!-- Panel dla trybu historycznego (domyślnie ukryty) -->
@@ -126,7 +153,4 @@
 
     <!-- Status -->
     <Label fx:id="statusLabel" style="-fx-text-fill: red;" />
-
-    <!-- Link do surowego JSON -->
-    <Hyperlink fx:id="showRawDataLink" text="Pokaż surowe dane" onAction="#onShowRawDataClick" />
 </VBox>
